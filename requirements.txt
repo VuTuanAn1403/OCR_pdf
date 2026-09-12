@@ -1,0 +1,33 @@
+# ==============================================================================
+# Vietnamese PDF OCR Pipeline Dependencies (V3.1 Demo)
+# Python Compatibility: Python 3.10 - 3.12 (Python 3.11 recommended)
+# ==============================================================================
+
+# Core PDF and Document Parsing
+pymupdf>=1.24.0,<=1.28.2
+
+# Computer Vision and Image Processing
+opencv-python-headless>=4.8.0,<=5.0.0.93
+pillow>=10.0.0,<=11.2.0
+numpy>=1.26.0,<=2.4.6
+
+# OCR Engines and ONNX Runtime
+rapidocr-onnxruntime>=1.3.0,<=1.4.4
+onnxruntime>=1.18.0,<=1.29.0
+
+# Deep Learning Recognition (VietOCR Seq2Seq)
+torch>=2.1.0,<=2.14.0
+torchvision>=0.16.0,<=0.29.0
+vietocr==0.3.13
+
+# Configuration, CLI & Utilities
+PyYAML>=6.0,<=6.0.3
+tabulate>=0.9.0,<=0.10.0
+psutil>=5.9.0,<=7.2.2
+tqdm>=4.65.0,<=4.70.0
+requests>=2.28.0,<=2.34.2
+pydantic>=2.0.0,<=2.14.0
+setuptools>=65.5.1,<70.0.0
+
+# Testing & Verification
+pytest>=8.0.0,<=9.1.1

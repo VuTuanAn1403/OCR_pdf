@@ -1,0 +1,16 @@
+{
+  "document_id": "sample",
+  "profile": "balanced",
+  "pages_benchmarked": [
+    1,
+    2
+  ],
+  "wall_clock_seconds": 28.46,
+  "seconds_per_page": 14.23,
+  "pages_per_minute": 4.22,
+  "primary_lines": 70,
+  "fallback_lines": 3,
+  "fallback_ratio": 0.0429,
+  "mean_confidence": 0.9582,
+  "mean_quality_score": 0.973
+}

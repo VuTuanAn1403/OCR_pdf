@@ -1,0 +1,105 @@
+# ==============================================================================
+# Git Ignore Configuration - Vietnamese OCR Pipeline V3.1
+# ==============================================================================
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+.tox/
+.nox/
+
+# Type Checking & Linting
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# IDE & Editor Metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Secrets & Environment Variables
+.env
+.env.*
+!.env.example
+secrets.*
+
+# Model binary caches (downloaded on demand or via scripts/setup_models.py)
+*.pth
+*.pt
+*.bin
+*.onnx
+*.weights
+
+# Temporary & Local Scratch
+scratch/
+debug/
+logs/
+*.log
+_clone_test/
+backup-final-before-v31-rollback/
+
+# Runtime Inputs & Outputs
+# Keep benchmark sample and golden evaluation predictions, ignore batch runs
+inputs/*
+!inputs/CLW_Baocaothuongnien_2020.pdf
+!inputs/README.md
+!inputs/.gitkeep
+
+output/*
+!output/CLW_Baocaothuongnien_2020/
+!output/.gitkeep
+!examples/**
+!sample.pdf

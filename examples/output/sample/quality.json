@@ -1,0 +1,53 @@
+{
+  "document_id": "sample",
+  "total_pages": 2,
+  "mean_native_score": 0.35,
+  "mean_ocr_confidence": 0.9582,
+  "mean_quality_score": 0.973,
+  "pages_processed_native": 0,
+  "pages_processed_ocr": 2,
+  "pages_processed_mixed": 0,
+  "total_fallback_regions": 3,
+  "total_time_seconds": 28.46,
+  "metrics": {
+    "cer": null,
+    "wer": null,
+    "mean_confidence": 0.9582,
+    "vietnamese_character_errors": 0,
+    "unicode_errors": 0,
+    "reading_order_errors": 0,
+    "table_structure_errors": 0,
+    "primary_lines": 70,
+    "fallback_lines": 3,
+    "fallback_ratio": 0.0429
+  },
+  "page_reports": [
+    {
+      "page": 1,
+      "page_type": "NATIVE_TEXT_LOW_QUALITY",
+      "native_text_score": 0.0,
+      "ocr_confidence": 0.9515,
+      "quality_score": 0.9671,
+      "total_blocks": 52,
+      "fallback_count": 2,
+      "suspicious_lines": [
+        "capnuoccholon.com.vn (reasons: Merged compound words without space)",
+        "cncholon(Acapnuoccholon.com.vn (reasons: Merged compound words without space)"
+      ],
+      "time_taken_seconds": 20.75
+    },
+    {
+      "page": 2,
+      "page_type": "NATIVE_TEXT_LOW_QUALITY",
+      "native_text_score": 0.7,
+      "ocr_confidence": 0.9649,
+      "quality_score": 0.979,
+      "total_blocks": 18,
+      "fallback_count": 1,
+      "suspicious_lines": [
+        "3) (reasons: Low engine confidence: 0.55 < 0.80)"
+      ],
+      "time_taken_seconds": 5.4
+    }
+  ]
+}

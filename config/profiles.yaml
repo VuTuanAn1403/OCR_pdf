@@ -1,0 +1,46 @@
+profiles:
+  fast:
+    profile: fast
+    native_first: true
+    render_dpi: 150
+    primary_engine: rapidocr
+    layout: light
+    fallback_enabled: false
+    batch_size: 16
+    native_quality:
+      reliable_threshold: 0.90
+      review_threshold: 0.70
+
+  balanced:
+    profile: balanced
+    native_first: true
+    render_dpi: 180
+    primary_engine: rapidocr
+    layout: standard
+    fallback_enabled: true
+    fallback_only_on_review: true
+    max_fallback_region_ratio: 0.15
+    max_fallback_regions_per_page: 20
+    fallback_upscale_dpi: 250
+    min_confidence: 0.80
+    batch_size: 8
+    native_quality:
+      reliable_threshold: 0.90
+      review_threshold: 0.70
+
+  accuracy:
+    profile: accuracy
+    native_first: true
+    render_dpi: 220
+    primary_engine: rapidocr
+    layout: accurate
+    fallback_enabled: true
+    adaptive_second_pass: true
+    max_fallback_region_ratio: 0.25
+    max_fallback_regions_per_page: 30
+    fallback_upscale_dpi: 300
+    min_confidence: 0.85
+    batch_size: 8
+    native_quality:
+      reliable_threshold: 0.92
+      review_threshold: 0.75
