@@ -109,8 +109,8 @@ pip install -r requirements.txt
 # 4. Tải và kiểm tra trọng số mô hình OCR
 python scripts/setup_models.py
 
-# 5. Chạy demo ngay trên tài liệu mẫu
-python run_ocr.py examples\sample.pdf --profile balanced
+# 5. Chạy demo ngay trên tài liệu mẫu (hỗ trợ cả 'sample.pdf' hoặc 'examples/sample.pdf')
+python run_ocr.py sample.pdf --profile balanced
 ```
 
 ### Trên Linux / macOS (Terminal)
@@ -131,7 +131,7 @@ pip install -r requirements.txt
 python scripts/setup_models.py
 
 # 5. Chạy demo ngay trên tài liệu mẫu
-py run_ocr.py examples\sample.pdf --profile balanced
+python run_ocr.py sample.pdf --profile balanced
 ```
 
 ---
@@ -163,10 +163,18 @@ Cú pháp lệnh thực thi:
 python run_ocr.py <ĐƯỜNG_DẪN_FILE_PDF> [TÙY CHỌN]
 ```
 
+> **Cơ chế tìm đường dẫn thông minh (Smart Path Resolution)**:
+> CLI tự động tìm kiếm file theo thứ tự ưu tiên:
+> 1. Đường dẫn trực tiếp: `./<tên_file>`
+> 2. Thư mục ví dụ: `./examples/<tên_file>`
+> 3. Thư mục tài liệu đầu vào: `./inputs/<tên_file>`
+>
+> Nếu không tìm thấy, hệ thống sẽ báo lỗi kèm danh sách toàn bộ các đường dẫn đã kiểm tra.
+
 ### Bảng tùy chọn tham số:
 | Tùy chọn | Kiểu | Mặc định | Ý nghĩa |
 | :--- | :---: | :---: | :--- |
-| `input` | chuỗi | *bắt buộc* | Đường dẫn tới file PDF cần xử lý |
+| `input` | chuỗi | *bắt buộc* | Đường dẫn tới file PDF cần xử lý (hỗ trợ tìm tương đối) |
 | `--profile` | `fast`, `balanced`, `accuracy` | `balanced` | Hồ sơ xử lý (tốc độ vs độ chính xác) |
 | `--pages` | chuỗi | `None` (toàn bộ) | Trang chỉ định (ví dụ `'1-5'` hoặc `'1,3,5'`) |
 | `--output` | chuỗi | `output` | Thư mục lưu kết quả xuất ra |
@@ -177,11 +185,17 @@ python run_ocr.py <ĐƯỜNG_DẪN_FILE_PDF> [TÙY CHỌN]
 
 ### Ví dụ thực tế:
 ```bash
-# Xử lý trang 1 của file mẫu với profile balanced mặc định
-python run_ocr.py examples/sample.pdf --profile balanced --pages 1
+# Tự động tìm file mẫu (trong examples/) và chạy trang 1 với profile balanced
+python run_ocr.py sample.pdf --profile balanced --pages 1
+
+# Hoặc chỉ định đường dẫn đầy đủ tới file trong examples
+python run_ocr.py examples/sample.pdf --profile balanced
+
+# Xử lý báo cáo trong inputs/ với profile balanced
+python run_ocr.py inputs/FPT_Baocaothuongnien_2022.pdf --profile balanced
 
 # Xử lý kèm đo đạc thông số benchmark chi tiết
-python run_ocr.py examples/sample.pdf --profile balanced --benchmark
+python run_ocr.py sample.pdf --profile balanced --benchmark
 
 # Xử lý tài liệu với profile accuracy cao nhất
 python run_ocr.py inputs/CLW_Baocaothuongnien_2020.pdf --profile accuracy --pages 1-3

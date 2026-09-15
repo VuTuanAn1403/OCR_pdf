@@ -17,11 +17,11 @@ This directory provides demonstration input files and pre-generated sample outpu
 
 From project root:
 ```bash
-python run_ocr.py examples/sample.pdf --profile balanced
-```
-Or use the copy located at the root:
-```bash
+# Using relative shortcut (automatically resolved from examples/):
 python run_ocr.py sample.pdf --profile balanced
+
+# Or using explicit path:
+python run_ocr.py examples/sample.pdf --profile balanced
 ```
 
 ## Adding Your Own Documents

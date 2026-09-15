@@ -14,9 +14,56 @@ from src.ocr.application.export_document import ExportDocumentUseCase
 from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
 from src.ocr.infrastructure.export.manifest_exporter import ManifestExporter
 
+
+
+def resolve_input_path(file_path: str) -> Path:
+    input_path = Path(file_path)
+    if input_path.is_file():
+        return input_path.resolve()
+
+    filename = input_path.name
+    cwd = Path.cwd()
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+
+    # Candidate paths to inspect in priority order
+    candidates = [
+        cwd / file_path,
+        cwd / "examples" / file_path,
+        cwd / "examples" / filename,
+        cwd / "inputs" / file_path,
+        cwd / "inputs" / filename,
+        project_root / file_path,
+        project_root / "examples" / file_path,
+        project_root / "examples" / filename,
+        project_root / "inputs" / file_path,
+        project_root / "inputs" / filename,
+    ]
+
+    checked_paths = []
+    for cand in candidates:
+        try:
+            resolved_cand = cand.resolve()
+        except Exception:
+            resolved_cand = cand
+
+        if resolved_cand not in checked_paths:
+            checked_paths.append(resolved_cand)
+            if resolved_cand.is_file():
+                return resolved_cand
+
+    error_lines = [
+        f"PDF file not found: '{file_path}'",
+        "Checked candidate paths:"
+    ]
+    for p in checked_paths:
+        error_lines.append(f"  - {p}")
+
+    raise FileNotFoundError("\n".join(error_lines))
+
+
 class ConvertDocumentUseCase:
     """
-    Main orchestration use case to convert a PDF document using the Hybrid OCR v2 Pipeline.
+    Main orchestration use case to convert a PDF document using the Hybrid OCR v3.1 Pipeline.
     """
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
@@ -49,7 +96,7 @@ class ConvertDocumentUseCase:
         ground_truth_dir: str = "benchmark/ground_truth"
     ) -> ExtractedDocument:
         t0 = time.time()
-        pdf_path = Path(file_path).resolve()
+        pdf_path = resolve_input_path(file_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {file_path}")
 

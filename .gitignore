@@ -95,6 +95,7 @@ backup-final-before-v31-rollback/
 # Keep benchmark sample and golden evaluation predictions, ignore batch runs
 inputs/*
 !inputs/CLW_Baocaothuongnien_2020.pdf
+!inputs/FPT_Baocaothuongnien_2022.pdf
 !inputs/README.md
 !inputs/.gitkeep
 

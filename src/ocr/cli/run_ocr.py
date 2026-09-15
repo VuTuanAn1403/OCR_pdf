@@ -5,6 +5,7 @@ from typing import List, Optional
 from tabulate import tabulate
 
 from src.ocr.application.convert_document import ConvertDocumentUseCase
+from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 
 def parse_pages_arg(pages_str: Optional[str]) -> Optional[List[int]]:
     if not pages_str:
@@ -25,9 +26,59 @@ def parse_pages_arg(pages_str: Optional[str]) -> Optional[List[int]]:
 
     return sorted(list(pages)) if pages else None
 
+
+
+def resolve_input_path(input_str: str) -> Path:
+    raw_path = Path(input_str)
+    if raw_path.is_file():
+        return raw_path.resolve()
+
+    filename = raw_path.name
+    cwd = Path.cwd()
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+
+    # Candidate paths to inspect in priority order:
+    # 1. ./<input>
+    # 2. ./examples/<input>
+    # 3. ./inputs/<input>
+    # 4. Same relative to project root
+    candidates = [
+        cwd / input_str,
+        cwd / "examples" / input_str,
+        cwd / "examples" / filename,
+        cwd / "inputs" / input_str,
+        cwd / "inputs" / filename,
+        project_root / input_str,
+        project_root / "examples" / input_str,
+        project_root / "examples" / filename,
+        project_root / "inputs" / input_str,
+        project_root / "inputs" / filename,
+    ]
+
+    checked_paths = []
+    for cand in candidates:
+        try:
+            resolved_cand = cand.resolve()
+        except Exception:
+            resolved_cand = cand
+
+        if resolved_cand not in checked_paths:
+            checked_paths.append(resolved_cand)
+            if resolved_cand.is_file():
+                return resolved_cand
+
+    error_lines = [
+        f"PDF file not found: '{input_str}'",
+        "Checked candidate paths:"
+    ]
+    for p in checked_paths:
+        error_lines.append(f"  - {p}")
+
+    raise FileNotFoundError("\n".join(error_lines))
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Codex Redesign OCR v2.0 - Hybrid Document Extraction Pipeline"
+        description=f"Codex OCR v3.1 (v{PIPELINE_VERSION}) - Speed & Accuracy Hybrid Document Extraction Pipeline"
     )
     parser.add_argument("input", help="Path to input PDF document")
     parser.add_argument("--profile", choices=["fast", "balanced", "accuracy"], default="balanced",
@@ -49,12 +100,18 @@ def main():
 
     args = parser.parse_args()
 
+    try:
+        pdf_path = resolve_input_path(args.input)
+    except FileNotFoundError as e:
+        print(f"\n[ERROR] Pipeline failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
     pages_list = parse_pages_arg(args.pages)
     converter = ConvertDocumentUseCase()
 
     print("=" * 60)
-    print("CODEX OCR v2.0 HYBRID DOCUMENT EXTRACTION PIPELINE")
-    print(f"File: {args.input} | Profile: {args.profile}")
+    print(f"CODEX OCR v3.1 HYBRID DOCUMENT EXTRACTION PIPELINE (v{PIPELINE_VERSION})")
+    print(f"File: {pdf_path} | Profile: {args.profile}")
     if pages_list:
         print(f"Pages: {pages_list}")
     if args.resume:
@@ -63,7 +120,7 @@ def main():
 
     try:
         doc = converter.execute(
-            file_path=args.input,
+            file_path=str(pdf_path),
             profile_name=args.profile,
             pages=pages_list,
             output_dir=args.output,
