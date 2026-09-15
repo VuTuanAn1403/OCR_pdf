@@ -96,8 +96,8 @@ Chi tiết kiến trúc kỹ thuật xem tại [docs/ARCHITECTURE.md](docs/ARCHI
 
 ```powershell
 # 1. Clone repository về máy
-git clone https://github.com/VuTuanAn1403/OCR.git
-cd OCR
+git clone https://github.com/VuTuanAn1403/OCR_pdf.git
+cd OCR_pdf
 
 # 2. Tạo và kích hoạt môi trường ảo Python 3.11
 py -3.11 -m venv .venv
@@ -110,15 +110,15 @@ pip install -r requirements.txt
 python scripts/setup_models.py
 
 # 5. Chạy demo ngay trên tài liệu mẫu
-python run_ocr.py sample.pdf --profile balanced
+python run_ocr.py examples\sample.pdf --profile balanced
 ```
 
 ### Trên Linux / macOS (Terminal)
 
 ```bash
 # 1. Clone repository về máy
-git clone https://github.com/VuTuanAn1403/OCR.git
-cd OCR
+git clone https://github.com/VuTuanAn1403/OCR_pdf.git
+cd OCR_pdf
 
 # 2. Tạo và kích hoạt môi trường ảo
 python3 -m venv .venv
@@ -131,7 +131,7 @@ pip install -r requirements.txt
 python scripts/setup_models.py
 
 # 5. Chạy demo ngay trên tài liệu mẫu
-python run_ocr.py sample.pdf --profile balanced
+py run_ocr.py examples\sample.pdf --profile balanced
 ```
 
 ---
@@ -178,10 +178,10 @@ python run_ocr.py <ĐƯỜNG_DẪN_FILE_PDF> [TÙY CHỌN]
 ### Ví dụ thực tế:
 ```bash
 # Xử lý trang 1 của file mẫu với profile balanced mặc định
-python run_ocr.py sample.pdf --profile balanced --pages 1
+python run_ocr.py examples/sample.pdf --profile balanced --pages 1
 
 # Xử lý kèm đo đạc thông số benchmark chi tiết
-python run_ocr.py sample.pdf --profile balanced --benchmark
+python run_ocr.py examples/sample.pdf --profile balanced --benchmark
 
 # Xử lý tài liệu với profile accuracy cao nhất
 python run_ocr.py inputs/CLW_Baocaothuongnien_2020.pdf --profile accuracy --pages 1-3
@@ -298,4 +298,3 @@ Thực hiện kiểm thử tự động hàng loạt (batch runner) trên tập 
 - **Khả năng phục hồi (Resume)**: Khi tiến trình bị dừng giữa chừng, cờ `--resume` kích hoạt cơ chế đọc cache theo từng trang, chỉ xử lý tiếp các trang còn thiếu mà không phải chạy lại từ đầu.
 
 ---
-
