@@ -1,4 +1,4 @@
-# Pipeline OCR & Trích Xuất Dữ Liệu PDF Tiếng Việt (Bản V3.1 Demo)
+# Pipeline OCR & Trích Xuất Dữ Liệu PDF Tiếng Việt (Bản V3.1 )
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Tests Passing](https://img.shields.io/badge/tests-35%2F35%20passing-brightgreen.svg)]()
