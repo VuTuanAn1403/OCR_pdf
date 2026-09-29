@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 
-Pipeline trích xuất chữ, bảng và ảnh từ PDF thành Markdown cùng JSON provenance. V4.3 tiếp tục dùng RapidOCR để phát hiện khung chữ và VietOCR local để nhận dạng, ưu tiên OCR vùng ảnh còn chữ, kiểm tra hướng trang, giữ PNG nguồn và đánh dấu `NEEDS_REVIEW` khi các lượt OCR bất đồng về số. Đặc tả V4.2 ở [docs/V4_2_DESIGN_SPECIFICATION_PDF_TO_MARKDOWN_EFFICIENCY.md](docs/V4_2_DESIGN_SPECIFICATION_PDF_TO_MARKDOWN_EFFICIENCY.md); benchmark và các gate V4.3 ở [docs/V4_3_ACCURACY_FIRST_VALIDATION.md](docs/V4_3_ACCURACY_FIRST_VALIDATION.md). Bộ ground truth hiện có sáu trang gán nhãn, chưa đủ để xác nhận độ chính xác trên toàn bộ tài liệu.
+Pipeline trích xuất chữ, bảng và ảnh từ PDF thành Markdown cùng JSON provenance. V4.3 tiếp tục dùng RapidOCR để phát hiện khung chữ và VietOCR local để nhận dạng, ưu tiên OCR vùng ảnh còn chữ, kiểm tra hướng trang, giữ PNG nguồn và đánh dấu `NEEDS_REVIEW` khi các lượt OCR bất đồng về số.
 
 ---
 
@@ -283,31 +283,5 @@ Hệ thống đã trải qua hai cấp độ đánh giá độc lập:
 | **Reading Order Accuracy (Thứ tự đọc)** | $\ge 80.00\%$ | **83.13%** | **ĐẠT VƯỢT MỤC TIÊU** |
 | **Tốc độ xử lý trung bình (CPU)** | $\le 15.00$ s/trang | **11.28 – 14.11 s/trang** | **ĐẠT CHỈ TIÊU** |
 | **Tỷ lệ kích hoạt Fallback** | $\le 12.00\%$ | **3.47% – 3.85%** | **TỐI ƯU HÓA TỐT** |
-
----
-
-### Phần B: Kết Quả Kiểm Thử Quy Mô Lớn Trên Toàn Bộ 100 PDF (7.362 Trang)
-
-Thực hiện kiểm thử tự động hàng loạt (batch runner) trên tập 100 file PDF báo cáo thường niên các công ty niêm yết trên sàn chứng khoán Việt Nam (từ `AAA`, `BCG`, `CLW`, `DGC`, `HPG`, `VIC`, đến `VNG`):
-
-#### 1. Tổng quan số liệu thực thi:
-- **Tổng số tài liệu xử lý**: **100 / 100 file hoàn tất** (tỷ lệ hoàn thành: 100%).
-- **Tổng số trang tài liệu đã quét**: **7.362 / 7.362 trang**.
-- **Tốc độ xử lý trung bình (Mean Speed)**: **10.83 giây / trang**.
-- **Tốc độ trung vị (Median Speed)**: **5.54 giây / trang** (do các trang Native Text chất lượng cao được xử lý tức thời trong ~0.05s).
-- **Phân vị 95 (P95 Speed)**: **14.37 giây / trang** (ngay cả các trang quét ảnh bảng biểu phức tạp nhất cũng không vượt ngưỡng 15s).
-- **Độ tin cậy nhận dạng trung bình (Mean OCR Confidence)**: **0.9614 (96.14%)**.
-- **Điểm chất lượng tài liệu trung bình (Mean Quality Score)**: **0.9748 (97.48%)**.
-
-#### 2. Phân loại cấu trúc tài liệu qua 100 PDF:
-- **Tài liệu thuần ảnh quét (Scanned Only)**: 40 tài liệu.
-- **Tài liệu dạng hỗn hợp (Mixed Native & Image)**: 60 tài liệu.
-- **Tài liệu chứa nhiều bảng biểu phức tạp (Table-Heavy)**: 34 tài liệu.
-- **Tài liệu chứa sơ đồ / biểu đồ tổ chức (Diagram-Heavy)**: 89 tài liệu.
-
-#### 3. Phân tích các trường hợp đặc thù & Độ ổn định:
-- **Tài liệu dung lượng lớn (Ví dụ: BCG)**: 139 trang, tổng thời gian xử lý 1.996,3 giây (~14.36 s/trang), chạy liên tục ổn định không tràn RAM (memory leak).
-- **Trường hợp tài liệu bị khóa / lỗi font vector**: Pipeline phát hiện tự động điểm Native Quality thấp ($< 0.70$), định tuyến chuyển sang OCR ảnh giúp cứu lại toàn bộ nội dung tiếng Việt có dấu thay vì xuất ra ký tự rác.
-- **Khả năng phục hồi (Resume)**: Khi tiến trình bị dừng giữa chừng, cờ `--resume` kích hoạt cơ chế đọc cache theo từng trang, chỉ xử lý tiếp các trang còn thiếu mà không phải chạy lại từ đầu.
 
 ---
