@@ -1,11 +1,8 @@
-# Pipeline OCR & Trích Xuất Dữ Liệu PDF Tiếng Việt (Bản V3.1 )
+# Pipeline PDF sang Markdown tiếng Việt (V4.3 Accuracy First)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![Tests Passing](https://img.shields.io/badge/tests-35%2F35%20passing-brightgreen.svg)]()
-[![Diacritic Accuracy](https://img.shields.io/badge/diacritic%20acc-94.35%25-success.svg)]()
-[![Table Accuracy](https://img.shields.io/badge/table%20acc-100.00%25-success.svg)]()
 
-Pipeline trích xuất tài liệu và nhận dạng quang học (OCR) tiếng Việt chuyên dụng cho các báo cáo tài chính, báo cáo thường niên và tài liệu hành chính phức tạp, tối ưu hóa tốc độ thực thi trên CPU và đảm bảo độ chính xác bảo toàn dấu tiếng Việt tối đa.
+Pipeline trích xuất chữ, bảng và ảnh từ PDF thành Markdown cùng JSON provenance. V4.3 tiếp tục dùng RapidOCR để phát hiện khung chữ và VietOCR local để nhận dạng, ưu tiên OCR vùng ảnh còn chữ, kiểm tra hướng trang, giữ PNG nguồn và đánh dấu `NEEDS_REVIEW` khi các lượt OCR bất đồng về số. Đặc tả V4.2 ở [docs/V4_2_DESIGN_SPECIFICATION_PDF_TO_MARKDOWN_EFFICIENCY.md](docs/V4_2_DESIGN_SPECIFICATION_PDF_TO_MARKDOWN_EFFICIENCY.md); benchmark và các gate V4.3 ở [docs/V4_3_ACCURACY_FIRST_VALIDATION.md](docs/V4_3_ACCURACY_FIRST_VALIDATION.md). Bộ ground truth hiện có sáu trang gán nhãn, chưa đủ để xác nhận độ chính xác trên toàn bộ tài liệu.
 
 ---
 
@@ -25,7 +22,7 @@ Xử lý PDF tiếng Việt thường gặp hai vấn đề lớn:
 
 ## 2. Tính Năng Nổi Bật
 
-- **Bảo toàn 100% thanh dấu & phụ âm tiếng Việt**: Xử lý hoàn hảo toàn bộ 134 tổ hợp nguyên âm có dấu, các ký tự đặc biệt (`ă, â, đ, ê, ô, ơ, ư`). Đầu ra được chuẩn hóa tuyệt đối theo chuẩn **Unicode NFC**.
+- **Chuẩn hóa Unicode NFC**: Giữ ký tự tiếng Việt khi OCR nhận đúng; các lỗi dấu còn lại cần đánh giá trên ground truth.
 - **Tối ưu hóa sâu cho CPU**: Tốc độ trung bình đạt **10.83 – 14.11 giây/trang** trên CPU tiêu chuẩn đa nhân, không bắt buộc GPU rời.
 - **Cơ chế Fallback vùng cục bộ (Selective Region Re-OCR)**: Chỉ OCR lại đúng tọa độ bounding box nghi vấn với DPI nâng cao (250–300 DPI), giữ tỷ lệ fallback dưới 5%, tiết kiệm tối đa thời gian.
 - **Tái cấu trúc bảng số liệu tài chính**: Tự động phát hiện căn chỉnh cột, hàng và ghép nối các ô nhiều dòng trong bảng biểu tài chính phức tạp.
@@ -108,6 +105,7 @@ pip install -r requirements.txt
 
 # 4. Tải và kiểm tra trọng số mô hình OCR
 python scripts/setup_models.py
+python scripts/setup_vietocr_model.py
 
 # 5. Chạy demo ngay trên tài liệu mẫu (hỗ trợ cả 'sample.pdf' hoặc 'examples/sample.pdf')
 python run_ocr.py sample.pdf --profile balanced
@@ -129,6 +127,7 @@ pip install -r requirements.txt
 
 # 4. Tải và kiểm tra trọng số mô hình OCR
 python scripts/setup_models.py
+python scripts/setup_vietocr_model.py
 
 # 5. Chạy demo ngay trên tài liệu mẫu
 python run_ocr.py sample.pdf --profile balanced
@@ -240,7 +239,7 @@ Mẫu kết quả trích xuất có sẵn có thể xem tại [examples/output/s
 
 ## 10. Bộ Kiểm Thử Tự Động (Regression Test Suite)
 
-Chạy toàn bộ 35 bài kiểm thử hồi quy:
+Chạy toàn bộ 39 bài kiểm thử hồi quy:
 ```bash
 pytest tests/ -q
 ```
@@ -248,7 +247,7 @@ pytest tests/ -q
 Kết quả:
 ```text
 ...................................
-35 passed in ~60s
+39 passed in ~60s
 ```
 
 Danh mục các bài kiểm thử bao gồm:

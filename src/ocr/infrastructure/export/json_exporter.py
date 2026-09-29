@@ -18,6 +18,9 @@ class JSONExporter:
             "rendered_dpi": page.rendered_dpi,
             "blocks": [b.to_dict() for b in page.blocks],
             "tables": [t.model_dump(mode="json") for t in page.tables],
+            "diagrams": [d.model_dump(mode="json") for d in page.diagrams],
+            "regions": [r.model_dump(mode="json") for r in page.regions],
+            "evidence_blocks": [e.model_dump(mode="json") for e in page.evidence_blocks],
             "quality": page.quality.model_dump(mode="json"),
             "metadata": page.metadata
         }

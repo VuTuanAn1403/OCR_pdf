@@ -29,7 +29,14 @@ class RapidOCREngine(BaseOCREngine):
         if img_bgr is None or img_bgr.size == 0:
             return []
 
-        raw_results, _ = self._engine(img_bgr)
+        h, w = img_bgr.shape[:2]
+        if h < 16 or w < 16:
+            return []
+
+        try:
+            raw_results, _ = self._engine(img_bgr)
+        except Exception:
+            return []
         if not raw_results:
             return []
 

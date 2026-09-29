@@ -4,6 +4,17 @@ from pathlib import Path
 from typing import List, Optional
 from tabulate import tabulate
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+sys_root = str(Path(__file__).resolve().parent.parent.parent.parent)
+if sys_root not in sys.path:
+    sys.path.insert(0, sys_root)
+
 from src.ocr.application.convert_document import ConvertDocumentUseCase
 from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 
@@ -78,7 +89,7 @@ def resolve_input_path(input_str: str) -> Path:
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"Codex OCR v3.1 (v{PIPELINE_VERSION}) - Speed & Accuracy Hybrid Document Extraction Pipeline"
+        description=f"PDF-to-Markdown extraction pipeline v{PIPELINE_VERSION}"
     )
     parser.add_argument("input", help="Path to input PDF document")
     parser.add_argument("--profile", choices=["fast", "balanced", "accuracy"], default="balanced",
@@ -110,7 +121,7 @@ def main():
     converter = ConvertDocumentUseCase()
 
     print("=" * 60)
-    print(f"CODEX OCR v3.1 HYBRID DOCUMENT EXTRACTION PIPELINE (v{PIPELINE_VERSION})")
+    print(f"PDF-TO-MARKDOWN EXTRACTION PIPELINE (v{PIPELINE_VERSION})")
     print(f"File: {pdf_path} | Profile: {args.profile}")
     if pages_list:
         print(f"Pages: {pages_list}")
@@ -152,6 +163,7 @@ def main():
                 ["Mean OCR Confidence", f"{doc.quality.mean_ocr_confidence:.4f}"],
                 ["Mean Quality Score", f"{doc.quality.mean_quality_score:.4f}"],
                 ["Primary Lines", f"{doc.quality.metrics.primary_lines}"],
+                ["Recognized Lines", f"{sum(p.quality.recognized_lines for p in doc.pages)}"],
                 ["Fallback Lines", f"{doc.quality.metrics.fallback_lines}"],
                 ["Fallback Ratio", f"{doc.quality.metrics.fallback_ratio:.2%}"]
             ]

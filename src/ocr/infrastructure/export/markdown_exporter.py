@@ -2,13 +2,68 @@ import re
 from typing import List, Optional
 from src.ocr.domain.models.page import ExtractedPage
 from src.ocr.domain.models.document import ExtractedDocument
+from src.ocr.domain.models.region import ContentType, BoundingBox, Region
 
 class MarkdownExporter:
     """
     Exports ExtractedDocument and ExtractedPage to cleanly formatted Markdown.
     """
+    @staticmethod
+    def image_asset_name(page_num: int, region: Region) -> str:
+        clean_id = re.sub(r"[^A-Za-z0-9_-]+", "_", region.region_id).strip("_") or "img"
+        return f"page_{page_num:02d}_{clean_id}.png"
+
+    @staticmethod
+    def image_regions_to_preserve(page: ExtractedPage) -> List[Region]:
+        preserved: List[Region] = []
+        for region in page.regions:
+            if region.content_type not in (ContentType.IMAGE, ContentType.IMAGE_TABLE, ContentType.FIGURE):
+                continue
+            # PDF image metadata can contain tiles translated entirely beyond
+            # the visible page. They have no source pixels to preserve, and
+            # emitting a Markdown link for them would create a broken asset.
+            page_width = float(getattr(page, "width", 0) or 0)
+            page_height = float(getattr(page, "height", 0) or 0)
+            if (
+                region.bbox.x1 <= 0 or region.bbox.y1 <= 0
+                or (page_width > 0 and region.bbox.x0 >= page_width)
+                or (page_height > 0 and region.bbox.y0 >= page_height)
+            ):
+                continue
+            # The page processor has explicitly declared that this region was
+            # preserved instead of extracted. Always emit its asset even when
+            # an unrelated footer or page number overlaps the image bbox.
+            if region.status == "PRESERVED":
+                preserved.append(region)
+                continue
+            # OCR text is not a replacement for the visual evidence in a large
+            # embedded image. Keep its source crop even after text extraction.
+            page_area = float(getattr(page, "width", 0) or 0) * float(getattr(page, "height", 0) or 0)
+            if page_area > 0 and region.bbox.area / page_area >= 0.20:
+                preserved.append(region)
+                continue
+            has_covering_content = any(
+                b.bbox and len(b.bbox) >= 4
+                and region.bbox.contains_point(
+                    (b.bbox[0] + b.bbox[2]) / 2.0,
+                    (b.bbox[1] + b.bbox[3]) / 2.0,
+                )
+                for b in page.blocks
+            )
+            if not has_covering_content:
+                has_covering_content = any(
+                    t.bbox and len(t.bbox) >= 4
+                    and region.bbox.overlap_ratio(BoundingBox(
+                        x0=t.bbox[0], y0=t.bbox[1], x1=t.bbox[2], y1=t.bbox[3]
+                    )) > 0.5
+                    for t in page.tables
+                )
+            if not has_covering_content:
+                preserved.append(region)
+        return preserved
+
     @classmethod
-    def export_page_markdown(cls, page: ExtractedPage) -> str:
+    def export_page_markdown(cls, page: ExtractedPage, image_prefix: str = "../images") -> str:
         lines: List[str] = [f"# Trang {page.page_num}\n"]
 
         # 1. Separate Header, Footer, and Body blocks
@@ -21,8 +76,22 @@ class MarkdownExporter:
             if htext:
                 lines.append(f"> **Header**: {htext}\n")
 
+        # V4.0 Diagram & Mermaid Rendering (Pillar 4)
+        if getattr(page, "diagrams", None):
+            for d in page.diagrams:
+                if hasattr(d, "to_mermaid"):
+                    m_code = d.to_mermaid()
+                    if m_code:
+                        if hasattr(d, "title") and d.title:
+                            lines.append(f"### {d.title}\n")
+                        lines.append(f"{m_code}\n")
+
         # 2. Sequence Tables and Body blocks
         from src.ocr.domain.models.text_block import TextBlock
+
+        # Keep OCR text even when a diagram is rendered. The graph may encode
+        # only part of a page, and dropping the remaining OCR blocks silently
+        # loses labels and surrounding content.
 
         # Step 2a: Merge vertically stacked lines of the same box (strictly for flowchart / diagram pages)
         is_diagram_page = (len(page.tables) == 0 and len(body_blocks) < 25)
@@ -150,26 +219,51 @@ class MarkdownExporter:
                 synthesized_blocks.append(b1)
                 i += 1
 
-            # Interleave tables into synthesized_blocks without reordering synthesized_blocks
-            tables_sorted = sorted(page.tables, key=lambda t: (t.bbox[1] if (t.bbox and len(t.bbox) >= 4) else 0.0))
-            items = []
-            table_idx = 0
-            for b in synthesized_blocks:
-                b_y = b.bbox[1] if (b.bbox and len(b.bbox) >= 4) else 0.0
-                while table_idx < len(tables_sorted):
-                    t = tables_sorted[table_idx]
+            # Helper to interleave tables and blocks based on vertical coordinate
+            def _interleave(blist, tlist):
+                t_sorted = sorted(tlist, key=lambda t: (t.bbox[1] if (t.bbox and len(t.bbox) >= 4) else 0.0))
+                res = []
+                t_idx = 0
+                for b in blist:
+                    b_y = b.bbox[1] if (b.bbox and len(b.bbox) >= 4) else 0.0
+                    while t_idx < len(t_sorted):
+                        t = t_sorted[t_idx]
+                        t_y = t.bbox[1] if (t.bbox and len(t.bbox) >= 4) else 0.0
+                        if t_y <= b_y:
+                            res.append((t_y, "table", t))
+                            t_idx += 1
+                        else:
+                            break
+                    res.append((b_y, "block", b))
+                while t_idx < len(t_sorted):
+                    t = t_sorted[t_idx]
                     t_y = t.bbox[1] if (t.bbox and len(t.bbox) >= 4) else 0.0
-                    if t_y <= b_y:
-                        items.append((t_y, "table", t))
-                        table_idx += 1
-                    else:
-                        break
-                items.append((b_y, "block", b))
-            while table_idx < len(tables_sorted):
-                t = tables_sorted[table_idx]
-                t_y = t.bbox[1] if (t.bbox and len(t.bbox) >= 4) else 0.0
-                items.append((t_y, "table", t))
-                table_idx += 1
+                    res.append((t_y, "table", t))
+                    t_idx += 1
+                return res
+
+            # On Two-Up / multi-column pages, interleave tables within their respective columns
+            p_width = getattr(page, "width", 595.0) or 595.0
+            if p_width > 900:
+                mid_x = p_width / 2.0
+                left_b = [b for b in synthesized_blocks if b.bbox and (b.bbox[0] + b.bbox[2]) / 2.0 < mid_x and (b.bbox[2] - b.bbox[0]) <= 0.65 * p_width]
+                right_b = [b for b in synthesized_blocks if b.bbox and (b.bbox[0] + b.bbox[2]) / 2.0 >= mid_x and (b.bbox[2] - b.bbox[0]) <= 0.65 * p_width]
+                span_b = [b for b in synthesized_blocks if b not in left_b and b not in right_b]
+
+                left_t = [t for t in page.tables if (t.bbox and len(t.bbox) >= 4) and (t.bbox[0] + t.bbox[2]) / 2.0 < mid_x and (t.bbox[2] - t.bbox[0]) <= 0.65 * p_width]
+                right_t = [t for t in page.tables if (t.bbox and len(t.bbox) >= 4) and (t.bbox[0] + t.bbox[2]) / 2.0 >= mid_x and (t.bbox[2] - t.bbox[0]) <= 0.65 * p_width]
+                span_t = [t for t in page.tables if t not in left_t and t not in right_t]
+
+                left_items = _interleave(left_b, left_t)
+                right_items = _interleave(right_b, right_t)
+                span_items = _interleave(span_b, span_t)
+
+                if span_items:
+                    items = _interleave(synthesized_blocks, page.tables)
+                else:
+                    items = left_items + right_items
+            else:
+                items = _interleave(synthesized_blocks, page.tables)
 
         # 3. Render content items in geometric reading sequence
         current_para: List[str] = []
@@ -181,7 +275,7 @@ class MarkdownExporter:
                 if current_para:
                     lines.append(" ".join(current_para) + "\n")
                     current_para = []
-                tab_md = obj.to_markdown()
+                tab_md = obj.to_markdown(format="pipe")
                 if tab_md:
                     lines.append(tab_md + "\n")
                 prev_bbox = obj.bbox
@@ -249,7 +343,7 @@ class MarkdownExporter:
                 else:
                     current_para.append(sub_text)
 
-                prev_ended_clause = sub_text.endswith((":", ".", ";", "?", "!"))
+                prev_ended_clause = sub_text.endswith((":", ".", ";", "?", "!")) or bool(re.search(r"\b\d{1,3}$", sub_text))
 
             prev_bbox = b.bbox
 
@@ -262,6 +356,20 @@ class MarkdownExporter:
             if ftext:
                 lines.append(f"> *Footer*: {ftext}\n")
 
+        # 5. V3.1.2 Region Preservation — render UNKNOWN and standalone IMAGE regions
+        for region in page.regions:
+            if region.content_type == ContentType.UNKNOWN:
+                bb = region.bbox.to_list()
+                lines.append(
+                    f"[Unresolved region preserved as image: page {page.page_num}, "
+                    f"region {region.region_id}, bbox={bb}]\n"
+                )
+        for region in cls.image_regions_to_preserve(page):
+            tag = "Embedded table image" if region.content_type == ContentType.IMAGE_TABLE else "Embedded image"
+            lines.append(
+                f"![{tag}]({image_prefix}/{cls.image_asset_name(page.page_num, region)})\n"
+            )
+
         return "\n".join(lines).strip()
 
     @classmethod
@@ -273,7 +381,7 @@ class MarkdownExporter:
         ]
 
         for page in doc.pages:
-            page_md = cls.export_page_markdown(page)
+            page_md = cls.export_page_markdown(page, image_prefix="images")
             doc_lines.append(page_md)
             doc_lines.append("\n---\n")
 

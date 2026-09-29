@@ -33,12 +33,18 @@ class ReocrRegionUseCase:
                 dpi=upscale_dpi,
                 margin=4.0
             )
+            if crop_img is None or crop_img.size == 0:
+                continue
 
             res = self.fallback_engine.reocr_crop(
                 crop_bgr=crop_img,
                 original_text=block.text,
                 original_conf=block.confidence
             )
+
+            if res.get("needs_review"):
+                block.fallback_reason = res.get("review_reason") or "ocr_disagreement"
+                block.reviewed = False
 
             if res.get("improved", False):
                 block.text = res["text"]
@@ -47,8 +53,12 @@ class ReocrRegionUseCase:
                 block.source = "fallback_ocr"
                 block.engine = "vietnamese_seq2seq_fallback"
                 block.fallback = True
-                block.fallback_reason = "regional_quality_gate_retry"
-                block.reviewed = True
+                if not res.get("needs_review"):
+                    block.fallback_reason = "regional_quality_gate_retry"
+                    block.reviewed = True
                 improved_count += 1
+
+            if res.get("needs_review"):
+                block.quality_score = min(block.quality_score, 0.74)
 
         return blocks_to_retry, improved_count

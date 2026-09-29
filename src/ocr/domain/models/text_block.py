@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 class TextBlock(BaseModel):
     text: str
-    source: Literal["native", "primary_ocr", "fallback_ocr"] = "primary_ocr"
+    source: Literal["native", "primary_ocr", "fallback_ocr", "image_ocr", "vector"] = "primary_ocr"
     page: int
     bbox: List[float] = Field(default_factory=list)  # [x0, y0, x1, y1]
     confidence: float = 1.0
@@ -17,6 +17,7 @@ class TextBlock(BaseModel):
     engine: str = "vietnamese_seq2seq"
     fallback: bool = False
     fallback_reason: Optional[str] = None
+    region_id: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -29,5 +30,6 @@ class TextBlock(BaseModel):
             "quality_score": round(self.quality_score, 4),
             "reviewed": self.reviewed,
             "fallback": self.fallback,
-            "fallback_reason": self.fallback_reason
+            "fallback_reason": self.fallback_reason,
+            "region_id": self.region_id
         }

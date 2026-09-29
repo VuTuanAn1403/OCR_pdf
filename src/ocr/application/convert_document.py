@@ -141,9 +141,10 @@ class ConvertDocumentUseCase:
             )
             extracted_pages.append(p_result)
 
-            if p_result.page_type.value == "NATIVE_TEXT":
+            pt_str = p_result.page_type.value if hasattr(p_result.page_type, "value") else str(p_result.page_type)
+            if pt_str in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE"):
                 pages_native += 1
-            elif p_result.page_type.value == "MIXED":
+            elif pt_str == "MIXED":
                 pages_mixed += 1
             else:
                 pages_ocr += 1
@@ -152,10 +153,12 @@ class ConvertDocumentUseCase:
 
         total_duration = time.time() - t0
         mean_native_score = sum(p.quality.native_text_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
-        mean_ocr_conf = sum(p.quality.ocr_confidence for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
+        ocr_pages = [p for p in extracted_pages if p.quality.recognized_lines > 0]
+        mean_ocr_conf = sum(p.quality.ocr_confidence for p in ocr_pages) / len(ocr_pages) if ocr_pages else 0.0
         mean_qual_score = sum(p.quality.quality_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
 
         total_primary_lines = sum(p.quality.total_blocks for p in extracted_pages)
+        total_recognized_lines = sum(p.quality.recognized_lines for p in extracted_pages)
         fb_ratio = (total_fallback / total_primary_lines) if total_primary_lines > 0 else 0.0
 
         quality_report = DocumentQualityReport(
@@ -203,6 +206,7 @@ class ConvertDocumentUseCase:
                 "seconds_per_page": round(total_duration / len(target_pages), 2),
                 "pages_per_minute": round((len(target_pages) / total_duration) * 60, 2),
                 "primary_lines": total_primary_lines,
+                "recognized_lines": total_recognized_lines,
                 "fallback_lines": total_fallback,
                 "fallback_ratio": round(fb_ratio, 4),
                 "mean_confidence": round(mean_ocr_conf, 4),

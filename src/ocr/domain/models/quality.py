@@ -20,9 +20,21 @@ class PageQualityReport(BaseModel):
     ocr_confidence: float = 0.0
     quality_score: float = 0.0
     total_blocks: int = 0
+    recognized_lines: int = 0
     fallback_count: int = 0
+    review_required_count: int = 0
     suspicious_lines: List[str] = Field(default_factory=list)
     time_taken_seconds: float = 0.0
+    stage_seconds: Dict[str, float] = Field(default_factory=dict)
+    unicode_corruption_detected: bool = False
+    native_extraction_failed: bool = False
+    orientation_fallback: Optional[str] = None
+    vector_table_probe_enabled: bool = False
+    # V3.1.2 Content Composition stats
+    region_count: int = 0
+    region_types: Dict[str, int] = Field(default_factory=dict)  # e.g. {"TEXT": 5, "IMAGE": 2}
+    content_status: str = "UNRESOLVED"
+    content_reason: Optional[str] = None
 
 class DocumentQualityReport(BaseModel):
     document_id: str

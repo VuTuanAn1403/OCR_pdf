@@ -9,8 +9,17 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import pymupdf
 
+sys_root = str(Path(__file__).resolve().parent.parent.parent.parent)
+if sys_root not in sys.path:
+    sys.path.insert(0, sys_root)
+
 from src.ocr.application.convert_document import ConvertDocumentUseCase
 from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 class BatchOCRRunner:
     """
@@ -24,13 +33,19 @@ class BatchOCRRunner:
         output_dir: str = "output",
         profile: str = "balanced",
         ground_truth_dir: str = "benchmark/ground_truth",
-        max_retries: int = 2
+        max_retries: int = 2,
+        excel_path: Optional[str] = "output/OCR_BENCHMARK_5_FILES.xlsx",
+        force: bool = False,
+        file_list: Optional[List[str]] = None
     ):
         self.input_dir = Path(input_dir).resolve()
         self.output_dir = Path(output_dir).resolve()
         self.profile = profile
         self.ground_truth_dir = Path(ground_truth_dir).resolve()
         self.max_retries = max_retries
+        self.excel_path = Path(excel_path).resolve() if excel_path else None
+        self.force = force
+        self.file_list = file_list
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.manifest_path = self.output_dir / "batch_manifest.json"
@@ -45,6 +60,9 @@ class BatchOCRRunner:
     def discover_files(self) -> List[Dict[str, Any]]:
         """Scans the input directory and prepares fixed manifest entries."""
         pdf_files = sorted(list(self.input_dir.glob("*.pdf")))
+        if self.file_list:
+            targets = {Path(t).name.lower() for t in self.file_list}
+            pdf_files = [f for f in pdf_files if f.name.lower() in targets or f.stem.lower() in targets]
         manifest_entries = []
 
         for f in pdf_files:
@@ -61,7 +79,7 @@ class BatchOCRRunner:
                 status = "FAILED_INPUT"
                 error_msg = str(e)
 
-            manifest_entries.append({
+            entry = {
                 "file_name": f.name,
                 "document_id": f.stem,
                 "relative_path": str(f.relative_to(self.input_dir.parent)),
@@ -92,12 +110,46 @@ class BatchOCRRunner:
                 "table_accuracy": None,
                 "reading_order_accuracy": None,
                 "classifications": []
-            })
+            }
+
+            if status != "FAILED_INPUT":
+                cached_data = self.is_cached(f.stem, total_pages)
+                if cached_data is not None:
+                    bm = cached_data["benchmark"]
+                    ql = cached_data["quality"]
+                    acc = cached_data.get("accuracy")
+
+                    entry["status"] = "CACHED"
+                    entry["wall_clock_seconds"] = bm.get("wall_clock_seconds")
+                    entry["seconds_per_page"] = bm.get("seconds_per_page")
+                    entry["pages_per_minute"] = bm.get("pages_per_minute")
+                    entry["fallback_lines"] = bm.get("fallback_lines")
+                    entry["total_lines"] = bm.get("primary_lines")
+                    entry["fallback_ratio"] = bm.get("fallback_ratio")
+                    entry["mean_confidence"] = bm.get("mean_confidence")
+                    entry["mean_quality_score"] = bm.get("mean_quality_score")
+                    entry["pages_native"] = ql.get("pages_processed_native", 0)
+                    entry["pages_ocr"] = ql.get("pages_processed_ocr", 0)
+                    entry["pages_mixed"] = ql.get("pages_processed_mixed", 0)
+
+                    if acc:
+                        entry["accuracy_status"] = "EVALUATED_AGAINST_GROUND_TRUTH"
+                        entry["cer"] = acc.get("mean_cer")
+                        entry["wer"] = acc.get("mean_wer")
+                        entry["diacritic_accuracy"] = acc.get("mean_diacritic_accuracy")
+                        entry["table_accuracy"] = acc.get("mean_table_accuracy")
+                        entry["reading_order_accuracy"] = acc.get("mean_reading_order_accuracy")
+
+                    entry["classifications"] = self.classify_document(entry, None)
+
+            manifest_entries.append(entry)
 
         return manifest_entries
 
     def is_cached(self, doc_id: str, expected_pages: int) -> Optional[Dict[str, Any]]:
         """Verifies if complete, valid artifacts already exist for this document."""
+        if self.force:
+            return None
         doc_dir = self.output_dir / doc_id
         if not doc_dir.exists() or not doc_dir.is_dir():
             return None
@@ -107,7 +159,8 @@ class BatchOCRRunner:
             doc_dir / "result.json",
             doc_dir / "manifest.json",
             doc_dir / "quality.json",
-            doc_dir / "benchmark.json"
+            doc_dir / "benchmark.json",
+            doc_dir / "validation.json"
         ]
         if not all(rf.exists() for rf in required_files):
             return None
@@ -122,6 +175,9 @@ class BatchOCRRunner:
 
         # Load benchmark and quality
         try:
+            validation = json.loads((doc_dir / "validation.json").read_text(encoding="utf-8"))
+            if validation.get("status") not in ("PASS", "NEEDS_REVIEW"):
+                return None
             with open(doc_dir / "benchmark.json", "r", encoding="utf-8") as f:
                 bm = json.load(f)
             with open(doc_dir / "quality.json", "r", encoding="utf-8") as f:
@@ -184,7 +240,7 @@ class BatchOCRRunner:
             total_files = len(files_manifest)
 
         print("=" * 70)
-        print(f"BATCH OCR RUNNER v3.1 — TOTAL INPUT FILES: {total_files}")
+        print(f"BATCH OCR RUNNER v{PIPELINE_VERSION} — TOTAL INPUT FILES: {total_files}")
         print(f"Input Directory: {self.input_dir}")
         print(f"Output Directory: {self.output_dir}")
         print(f"Profile: {self.profile} (FROZEN)")
@@ -205,6 +261,11 @@ class BatchOCRRunner:
 
             if entry["status"] == "FAILED_INPUT":
                 print(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [FAILED_INPUT]: {entry['error']}")
+                continue
+
+            if entry["status"] == "CACHED":
+                print(f"\n[FILE {file_num:03d}/{total_files:03d}] {f_name} [CACHED]")
+                print(f"Pages: {tot_pages} | Sec/Page: {entry['seconds_per_page']}s | Status: CACHED/SKIPPED")
                 continue
 
             # Check cache
@@ -261,7 +322,7 @@ class BatchOCRRunner:
                         file_path=entry["absolute_path"],
                         profile_name=self.profile,
                         output_dir=str(self.output_dir),
-                        resume=True,
+                        resume=(not self.force),
                         benchmark=True,
                         accuracy_report=has_gt,
                         ground_truth_dir=str(self.ground_truth_dir)
@@ -317,6 +378,16 @@ class BatchOCRRunner:
             with open(self.manifest_path, "w", encoding="utf-8") as f:
                 json.dump(files_manifest, f, ensure_ascii=False, indent=2)
 
+            # Generate real-time reports and update Excel after each file
+            try:
+                self.generate_reports(files_manifest, time.time() - batch_t0)
+            except Exception as e:
+                print(f"[WARN] Incremental report generation failed: {e}", file=sys.stderr)
+
+            # Explicit garbage collection to keep memory bounded
+            import gc
+            gc.collect()
+
         batch_duration = time.time() - batch_t0
         print("\n" + "=" * 70)
         print("ALL BATCH FILES PROCESSED. GENERATING CONSOLIDATED REPORTS...")
@@ -336,15 +407,16 @@ class BatchOCRRunner:
 
         # Time statistics for processed files
         valid_times = [e["wall_clock_seconds"] for e in manifest if e.get("wall_clock_seconds")]
-        valid_sec_per_page = [e["seconds_per_page"] for e in manifest if e.get("seconds_per_page")]
+        valid_sec_per_page = [e["seconds_per_page"] for e in manifest if e.get("seconds_per_page") is not None]
         valid_fb = [e["fallback_ratio"] for e in manifest if e.get("fallback_ratio") is not None]
         valid_qual = [e["mean_quality_score"] for e in manifest if e.get("mean_quality_score") is not None]
 
         import numpy as np
-        fastest_file = min(manifest, key=lambda x: x.get("seconds_per_page") or 999999) if valid_sec_per_page else {}
-        slowest_file = max(manifest, key=lambda x: x.get("seconds_per_page") or -1) if valid_sec_per_page else {}
+        valid_entries = [e for e in manifest if e.get("seconds_per_page") is not None]
+        fastest_file = min(valid_entries, key=lambda x: x.get("seconds_per_page"), default={})
+        slowest_file = max(valid_entries, key=lambda x: x.get("seconds_per_page"), default={})
         median_sec = float(np.median(valid_sec_per_page)) if valid_sec_per_page else 0.0
-        mean_sec = float(np.mean(valid_sec_per_page)) if valid_sec_per_page else 0.0
+        mean_sec = sum(valid_times) / processed_pages if processed_pages else 0.0
         p95_sec = float(np.percentile(valid_sec_per_page, 95)) if valid_sec_per_page else 0.0
 
         # Classification counts
@@ -357,7 +429,8 @@ class BatchOCRRunner:
         # Build Review Queue
         review_queue = []
         for e in manifest:
-            q_score = e.get("mean_quality_score") or 1.0
+            q_score = e.get("mean_quality_score")
+            q_score = 1.0 if q_score is None else q_score
             fb_r = e.get("fallback_ratio") or 0.0
             cer_v = e.get("cer")
 
@@ -374,6 +447,29 @@ class BatchOCRRunner:
 
         with open(self.review_queue_path, "w", encoding="utf-8") as f:
             json.dump(review_queue, f, ensure_ascii=False, indent=2)
+
+        stage_totals = {}
+        for entry in manifest:
+            if entry["status"] not in ("COMPLETED", "CACHED"):
+                continue
+            quality_path = self.output_dir / entry["document_id"] / "quality.json"
+            if not quality_path.is_file():
+                continue
+            quality = json.loads(quality_path.read_text(encoding="utf-8"))
+            for page in quality.get("page_reports", []):
+                for stage, duration in page.get("stage_seconds", {}).items():
+                    stage_totals[stage] = stage_totals.get(stage, 0.0) + duration
+        measured_total = sum(stage_totals.values())
+        measured_stages = [
+            {
+                "rank": rank,
+                "bottleneck": stage,
+                "description": f"{duration:.1f}s ({duration / measured_total:.1%} of measured page processing time)",
+            }
+            for rank, (stage, duration) in enumerate(
+                sorted(stage_totals.items(), key=lambda item: item[1], reverse=True), start=1
+            )
+        ]
 
         # Build batch_report.json
         report_data = {
@@ -408,13 +504,7 @@ class BatchOCRRunner:
                 "pipeline_version": PIPELINE_VERSION,
                 "profile": self.profile
             },
-            "bottlenecks": [
-                {"rank": 1, "bottleneck": "VietOCR Attention / Seq2Seq Fallback", "description": "Autoregressive token generation on dense table pages accounts for up to 45% of slow page latency."},
-                {"rank": 2, "bottleneck": "PDF High-DPI Rendering (180-200 DPI)", "description": "PyMuPDF rendering of 100+ page image-heavy PDFs adds steady ~0.8s overhead per scanned page."},
-                {"rank": 3, "bottleneck": "RapidOCR DBNet Detection Scaling", "description": "High resolution text detection on complex multi-column/nested balance sheets."},
-                {"rank": 4, "bottleneck": "Table Cell Collision Resolution", "description": "Coordinate clustering on multi-line continuation cells for 15+ column annual report statements."},
-                {"rank": 5, "bottleneck": "Single-Threaded CPU Core Contention", "description": "Sequential execution without thread pooling per CPU core on large 150+ page PDFs."}
-            ],
+            "bottlenecks": measured_stages,
             "files": manifest
         }
 
@@ -448,8 +538,8 @@ class BatchOCRRunner:
         b = report["bottlenecks"]
 
         md_lines = [
-            "# BÁO CÁO TOÀN DIỆN BATCH OCR BENCHMARK — 100 PDF",
-            f"> **Pipeline Version**: `{s['pipeline_version']}` | **Profile**: `{s['profile']}` | **Engine**: RapidOCR ONNX + VietOCR Seq2Seq Fallback",
+            f"# BÁO CÁO BATCH OCR — {s['total_files']} PDF",
+            f"> **Pipeline Version**: `{s['pipeline_version']}` | **Profile**: `{s['profile']}` | **Engine**: RapidOCR detection + VietOCR recognition",
             "",
             "## 1. Executive Summary (Tổng quan điều hành)",
             "",
@@ -458,9 +548,9 @@ class BatchOCRRunner:
             f"- **Tài liệu lỗi**: **{s['failed']} files**",
             f"- **Tổng số trang xử lý**: **{s['processed_pages']} / {s['total_pages']} trang**",
             f"- **Tổng thời gian xử lý toàn batch**: **{s['total_batch_duration_seconds']:.2f} giây ({s['total_batch_duration_seconds']/60:.2f} phút / {s['total_batch_duration_seconds']/3600:.2f} giờ)**",
-            f"- **Tốc độ xử lý trung bình (Mean)**: **{s['average_seconds_per_page']:.2f} giây/trang**",
-            f"- **Tốc độ trung vị (Median)**: **{s['median_seconds_per_page']:.2f} giây/trang**",
-            f"- **Tốc độ P95**: **{s['p95_seconds_per_page']:.2f} giây/trang**",
+            f"- **Tốc độ trung bình có trọng số theo trang**: **{s['average_seconds_per_page']:.2f} giây/trang**",
+            f"- **Trung vị tốc độ theo file**: **{s['median_seconds_per_page']:.2f} giây/trang**",
+            f"- **P95 tốc độ theo file**: **{s['p95_seconds_per_page']:.2f} giây/trang**",
             f"- **Năng suất toàn hệ thống**: **{s['overall_pages_per_minute']:.2f} pages/minute**",
             "",
             "### Phân loại tài liệu trong tập dữ liệu:",
@@ -477,7 +567,7 @@ class BatchOCRRunner:
             f"- **File xử lý nhanh nhất**: `{s['fastest_file']['file_name']}` ({s['fastest_file']['seconds_per_page']} s/trang)",
             f"- **File xử lý chậm nhất**: `{s['slowest_file']['file_name']}` ({s['slowest_file']['seconds_per_page']} s/trang)",
             "",
-            "### Top 5 Bottlenecks (Nguyên nhân chi phối thời gian):",
+            "### Thời gian đo theo công đoạn xử lý trang:",
             ""
         ]
 
@@ -488,7 +578,7 @@ class BatchOCRRunner:
             "",
             "---",
             "",
-            "## 3. Bảng chi tiết toàn bộ 100 tài liệu",
+            f"## 3. Bảng chi tiết toàn bộ {s['total_files']} tài liệu",
             "",
             "| # | File | Pages | Time (s) | Sec/Page | Pages/Min | OCR | Native | Fallback % | Quality | CER | WER | Diacritic | Table | Order | Status |",
             "|---|------|------:|---------:|---------:|----------:|----:|-------:|-----------:|--------:|----:|----:|----------:|------:|------:|:------:|"
@@ -519,11 +609,8 @@ class BatchOCRRunner:
             "---",
             "",
             "## 4. Phân tích độ tin cậy & Khuyến nghị (Reliability & Recommendations)",
-            "- **Tính ổn định của pipeline**: Cơ chế Native Text Quality Gate loại bỏ 100% việc OCR lặp lại trên các trang PDF sạch, duy trì độ chính xác ký tự gốc tuyệt đối.",
-            "- **Khuyến nghị tối ưu tiếp theo**:",
-            "  1. Triển khai Multiprocessing Worker Pool (2-4 workers) ở cấp độ tài liệu trên máy chủ nhiều nhân CPU.",
-            "  2. Tối ưu hóa mô hình VietOCR Seq2Seq bằng ONNX Runtime FP16/INT8 để giảm 50% thời gian fallback khi chạy CPU.",
-            "  3. Tiếp tục hoàn thiện bảng biểu phức tạp (merged vertical cells) trên các báo cáo tài chính kiểm toán nhiều trang.",
+            "- Số liệu thời gian theo công đoạn lấy từ `quality.json` của các trang đã hoàn tất; chưa bao gồm thời gian nạp mô hình và xuất artifact.",
+            "- CER/WER và độ chính xác bảng chỉ có thể kết luận khi có ground truth độc lập.",
             ""
         ])
 
@@ -551,16 +638,35 @@ class BatchOCRRunner:
             json.dump(validation_data, f, ensure_ascii=False, indent=2)
         print(f"Validation report đã tạo: {self.final_validation_path}")
 
+        # Build Excel report if excel_path is specified
+        if self.excel_path:
+            try:
+                from scripts.export_batch_excel import build_workbook
+                build_workbook(self.output_dir, self.excel_path)
+                print(f"Báo cáo Excel đã tạo: {self.excel_path}")
+            except Exception as e:
+                print(f"[WARN] Excel export failed: {e}", file=sys.stderr)
+
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Batch OCR Runner v3.1 for 100 PDF benchmark")
+    parser = argparse.ArgumentParser(description="Batch OCR Runner v3.2.1 for 100 PDF benchmark")
     parser.add_argument("--input", default="inputs", help="Input directory")
     parser.add_argument("--output", default="output", help="Output directory")
     parser.add_argument("--profile", default="balanced", help="Profile (default: balanced)")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of files for testing")
+    parser.add_argument("--excel", default="output/OCR_BENCHMARK_5_FILES.xlsx", help="Excel output path")
+    parser.add_argument("--force", action="store_true", help="Force rerun without cache")
+    parser.add_argument("--files", nargs="+", default=None, help="Filter specific files to run in batch")
     args = parser.parse_args()
 
-    runner = BatchOCRRunner(input_dir=args.input, output_dir=args.output, profile=args.profile)
+    runner = BatchOCRRunner(
+        input_dir=args.input,
+        output_dir=args.output,
+        profile=args.profile,
+        excel_path=args.excel,
+        force=args.force,
+        file_list=args.files
+    )
     runner.execute_batch(limit=args.limit)
 
 if __name__ == "__main__":
