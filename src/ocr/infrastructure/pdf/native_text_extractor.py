@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 import pymupdf
 import unicodedata
 from src.ocr.domain.models.text_block import TextBlock
+from src.ocr.infrastructure.postprocessing.unicode_normalizer import UnicodeNormalizer
 
 class NativeTextExtractor:
     """
@@ -45,7 +46,7 @@ class NativeTextExtractor:
                     continue
 
                 avg_font_size = sum(font_sizes) / len(font_sizes) if font_sizes else 10.0
-                norm_text = unicodedata.normalize("NFC", full_line_text)
+                norm_text = UnicodeNormalizer.normalize(full_line_text)
 
                 block = TextBlock(
                     text=norm_text,

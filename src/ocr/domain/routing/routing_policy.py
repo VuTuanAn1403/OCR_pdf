@@ -22,6 +22,11 @@ class RoutingPolicy:
                 return PageType.SCANNED_IMAGE
             return PageType.IMAGE_ONLY
 
+        # Product showcase collage (spec §4.3):
+        # Multiple product packaging photos, minimal narrative text, no financial tables
+        if image_count >= 4 and char_count < 400 and table_count == 0:
+            return PageType.PRODUCT_SHOWCASE_COLLAGE
+
         # High quality native text
         if native_quality_score >= self.reliable_threshold:
             if is_full_page_image:

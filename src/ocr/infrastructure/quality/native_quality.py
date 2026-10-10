@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from typing import Dict, Any, List
+from src.ocr.infrastructure.postprocessing.unicode_normalizer import UnicodeNormalizer
 
 class NativeQualityEvaluator:
     """
@@ -34,6 +35,15 @@ class NativeQualityEvaluator:
         """
         if not text or len(text.strip()) == 0:
             return 0.0
+
+        unicode_report = UnicodeNormalizer.analyze(text)
+        if unicode_report["is_corrupted"]:
+            # A broken ToUnicode map is not recoverable from the extracted
+            # characters. OCR must be routed from the rendered page instead.
+            corruption_score = float(unicode_report["score"])
+            if meta.get("native_extraction_failed"):
+                return 0.0
+            return round(min(0.45, corruption_score), 4)
 
         char_count = len(text.strip())
         if char_count < 20:

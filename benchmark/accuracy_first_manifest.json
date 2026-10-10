@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "annotation_scope": "Human-transcribed visible spans and relationships on selected real PDF pages; not full-page transcription",
+  "cases": [
+    {
+      "pdf": "inputs/BBC_Baocaothuongnien_2021.pdf",
+      "page": 9,
+      "category": "scan_rotation",
+      "orientation_degrees": 0,
+      "text_anchors": ["Hành trình năm 2021", "GIỚI THIỆU VỀ CÔNG TY", "Chương trình Tết Trung Thu Cho Em"],
+      "numeric_values": ["12/21", "02/22"],
+      "reading_order": ["Hành trình năm 2021", "Chương trình Tết Trung Thu Cho Em"]
+    },
+    {
+      "pdf": "inputs/BBC_Baocaothuongnien_2021.pdf",
+      "page": 16,
+      "category": "scan_rotation",
+      "orientation_degrees": 0,
+      "text_anchors": ["Nhóm dinh dưỡng", "Mumsure", "Quasure", "CALYTOS"],
+      "reading_order": ["Nhóm dinh dưỡng", "Mumsure"]
+    },
+    {
+      "pdf": "inputs/BFC_Baocaothuongnien_2021.pdf",
+      "page": 64,
+      "category": "rotated_table",
+      "orientation_degrees": 90,
+      "text_anchors": ["Nợ xấu", "Tổng giá trị các khoản phải thu quá hạn"],
+      "numeric_values": ["35.296.305.783", "9.912.807.558", "18.492.900.264", "7.051.580.712"],
+      "table_cells": [
+        {"row": "Tổng giá trị các khoản phải thu quá hạn", "column": 1, "text": "35.296.305.783"},
+        {"row": "Tổng giá trị các khoản phải thu quá hạn", "column": 2, "text": "9.912.807.558"},
+        {"row": "Tổng giá trị các khoản phải thu quá hạn", "column": 3, "text": "18.492.900.264"},
+        {"row": "Tổng giá trị các khoản phải thu quá hạn", "column": 4, "text": "7.051.580.712"}
+      ]
+    },
+    {
+      "pdf": "inputs/BRC_Baocaothuongnien_2021.pdf",
+      "page": 41,
+      "category": "two_up_image_text",
+      "orientation_degrees": 0,
+      "text_anchors": ["THUYẾT MINH BÁO CÁO TÀI CHÍNH", "ĐẶC ĐIỂM HOẠT ĐỘNG CỦA DOANH NGHIỆP", "Công cụ tài chính", "Các nghiệp vụ bằng ngoại tệ"],
+      "numeric_values": ["123.749.970.000"],
+      "reading_order": ["THUYẾT MINH BÁO CÁO TÀI CHÍNH", "ĐẶC ĐIỂM HOẠT ĐỘNG CỦA DOANH NGHIỆP", "Công cụ tài chính"]
+    },
+    {
+      "pdf": "inputs/C47_Baocaothuongnien_2021.pdf",
+      "page": 52,
+      "category": "two_up_hybrid",
+      "orientation_degrees": 0,
+      "text_anchors": ["BÁO CÁO TÀI CHÍNH HỢP NHẤT", "CÔNG TY CỔ PHẦN XÂY DỰNG 47", "Cho năm tài chính kết thúc ngày 31/12/2021", "đã được kiểm toán"],
+      "numeric_values": ["31/12/2021"],
+      "reading_order": ["GẮN KẾT - VƯƠN XA", "BÁO CÁO TÀI CHÍNH HỢP NHẤT", "BÁO CÁO THƯỜNG NIÊN 2021"]
+    },
+    {
+      "pdf": "inputs/CDC_Baocaothuongnien_2021.pdf",
+      "page": 92,
+      "category": "native_plus_scanned_text",
+      "orientation_degrees": 0,
+      "text_anchors": ["Ý kiến của Kiểm toán viên", "Vấn đề khác", "Ernst & Young Việt Nam", "Ngày 8 tháng 4 năm 2022"],
+      "numeric_values": ["2022"],
+      "reading_order": ["Ý kiến của Kiểm toán viên", "Vấn đề khác", "Ngày 8 tháng 4 năm 2022"]
+    }
+  ]
+}

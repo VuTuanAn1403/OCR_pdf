@@ -45,9 +45,17 @@ class PDFRenderer:
         x1 = min(page_rect.width, bbox[2] + margin)
         y1 = min(page_rect.height, bbox[3] + margin)
 
+        if x1 <= x0 or y1 <= y0:
+            return np.zeros((0, 0, 3), dtype=np.uint8), [x0, y0, x1, y1]
+
         clip_rect = pymupdf.Rect(x0, y0, x1, y1)
         pix = page.get_pixmap(dpi=dpi, clip=clip_rect)
+        if pix.w == 0 or pix.h == 0 or not pix.samples:
+            return np.zeros((0, 0, 3), dtype=np.uint8), [x0, y0, x1, y1]
+
         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape((pix.h, pix.w, pix.n))
+        if img.size == 0:
+            return np.zeros((0, 0, 3), dtype=np.uint8), [x0, y0, x1, y1]
 
         if pix.n == 4:
             bgr = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)

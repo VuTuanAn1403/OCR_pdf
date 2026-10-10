@@ -2,11 +2,11 @@ import sys
 import io
 from pathlib import Path
 
-# Force UTF-8 encoding for standard output/error on Windows
+# Force UTF-8 encoding for standard output/error on Windows with line buffering
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 if hasattr(sys.stderr, "buffer"):
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

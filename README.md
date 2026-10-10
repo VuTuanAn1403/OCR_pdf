@@ -1,11 +1,8 @@
-# Pipeline OCR & Trích Xuất Dữ Liệu PDF Tiếng Việt (Bản V3.1 Demo)
+# Pipeline PDF sang Markdown tiếng Việt (V4.3 Accuracy First)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![Tests Passing](https://img.shields.io/badge/tests-35%2F35%20passing-brightgreen.svg)]()
-[![Diacritic Accuracy](https://img.shields.io/badge/diacritic%20acc-94.35%25-success.svg)]()
-[![Table Accuracy](https://img.shields.io/badge/table%20acc-100.00%25-success.svg)]()
 
-Pipeline trích xuất tài liệu và nhận dạng quang học (OCR) tiếng Việt chuyên dụng cho các báo cáo tài chính, báo cáo thường niên và tài liệu hành chính phức tạp, tối ưu hóa tốc độ thực thi trên CPU và đảm bảo độ chính xác bảo toàn dấu tiếng Việt tối đa.
+Pipeline trích xuất chữ, bảng và ảnh từ PDF thành Markdown cùng JSON provenance. V4.3 tiếp tục dùng RapidOCR để phát hiện khung chữ và VietOCR local để nhận dạng, ưu tiên OCR vùng ảnh còn chữ, kiểm tra hướng trang, giữ PNG nguồn và đánh dấu `NEEDS_REVIEW` khi các lượt OCR bất đồng về số.
 
 ---
 
@@ -25,7 +22,7 @@ Xử lý PDF tiếng Việt thường gặp hai vấn đề lớn:
 
 ## 2. Tính Năng Nổi Bật
 
-- **Bảo toàn 100% thanh dấu & phụ âm tiếng Việt**: Xử lý hoàn hảo toàn bộ 134 tổ hợp nguyên âm có dấu, các ký tự đặc biệt (`ă, â, đ, ê, ô, ơ, ư`). Đầu ra được chuẩn hóa tuyệt đối theo chuẩn **Unicode NFC**.
+- **Chuẩn hóa Unicode NFC**: Giữ ký tự tiếng Việt khi OCR nhận đúng; các lỗi dấu còn lại cần đánh giá trên ground truth.
 - **Tối ưu hóa sâu cho CPU**: Tốc độ trung bình đạt **10.83 – 14.11 giây/trang** trên CPU tiêu chuẩn đa nhân, không bắt buộc GPU rời.
 - **Cơ chế Fallback vùng cục bộ (Selective Region Re-OCR)**: Chỉ OCR lại đúng tọa độ bounding box nghi vấn với DPI nâng cao (250–300 DPI), giữ tỷ lệ fallback dưới 5%, tiết kiệm tối đa thời gian.
 - **Tái cấu trúc bảng số liệu tài chính**: Tự động phát hiện căn chỉnh cột, hàng và ghép nối các ô nhiều dòng trong bảng biểu tài chính phức tạp.
@@ -96,8 +93,8 @@ Chi tiết kiến trúc kỹ thuật xem tại [docs/ARCHITECTURE.md](docs/ARCHI
 
 ```powershell
 # 1. Clone repository về máy
-git clone https://github.com/VuTuanAn1403/OCR.git
-cd OCR
+git clone https://github.com/VuTuanAn1403/OCR_pdf.git
+cd OCR_pdf
 
 # 2. Tạo và kích hoạt môi trường ảo Python 3.11
 py -3.11 -m venv .venv
@@ -108,8 +105,9 @@ pip install -r requirements.txt
 
 # 4. Tải và kiểm tra trọng số mô hình OCR
 python scripts/setup_models.py
+python scripts/setup_vietocr_model.py
 
-# 5. Chạy demo ngay trên tài liệu mẫu
+# 5. Chạy demo ngay trên tài liệu mẫu (hỗ trợ cả 'sample.pdf' hoặc 'examples/sample.pdf')
 python run_ocr.py sample.pdf --profile balanced
 ```
 
@@ -117,8 +115,8 @@ python run_ocr.py sample.pdf --profile balanced
 
 ```bash
 # 1. Clone repository về máy
-git clone https://github.com/VuTuanAn1403/OCR.git
-cd OCR
+git clone https://github.com/VuTuanAn1403/OCR_pdf.git
+cd OCR_pdf
 
 # 2. Tạo và kích hoạt môi trường ảo
 python3 -m venv .venv
@@ -129,6 +127,7 @@ pip install -r requirements.txt
 
 # 4. Tải và kiểm tra trọng số mô hình OCR
 python scripts/setup_models.py
+python scripts/setup_vietocr_model.py
 
 # 5. Chạy demo ngay trên tài liệu mẫu
 python run_ocr.py sample.pdf --profile balanced
@@ -163,10 +162,18 @@ Cú pháp lệnh thực thi:
 python run_ocr.py <ĐƯỜNG_DẪN_FILE_PDF> [TÙY CHỌN]
 ```
 
+> **Cơ chế tìm đường dẫn thông minh (Smart Path Resolution)**:
+> CLI tự động tìm kiếm file theo thứ tự ưu tiên:
+> 1. Đường dẫn trực tiếp: `./<tên_file>`
+> 2. Thư mục ví dụ: `./examples/<tên_file>`
+> 3. Thư mục tài liệu đầu vào: `./inputs/<tên_file>`
+>
+> Nếu không tìm thấy, hệ thống sẽ báo lỗi kèm danh sách toàn bộ các đường dẫn đã kiểm tra.
+
 ### Bảng tùy chọn tham số:
 | Tùy chọn | Kiểu | Mặc định | Ý nghĩa |
 | :--- | :---: | :---: | :--- |
-| `input` | chuỗi | *bắt buộc* | Đường dẫn tới file PDF cần xử lý |
+| `input` | chuỗi | *bắt buộc* | Đường dẫn tới file PDF cần xử lý (hỗ trợ tìm tương đối) |
 | `--profile` | `fast`, `balanced`, `accuracy` | `balanced` | Hồ sơ xử lý (tốc độ vs độ chính xác) |
 | `--pages` | chuỗi | `None` (toàn bộ) | Trang chỉ định (ví dụ `'1-5'` hoặc `'1,3,5'`) |
 | `--output` | chuỗi | `output` | Thư mục lưu kết quả xuất ra |
@@ -177,8 +184,14 @@ python run_ocr.py <ĐƯỜNG_DẪN_FILE_PDF> [TÙY CHỌN]
 
 ### Ví dụ thực tế:
 ```bash
-# Xử lý trang 1 của file mẫu với profile balanced mặc định
+# Tự động tìm file mẫu (trong examples/) và chạy trang 1 với profile balanced
 python run_ocr.py sample.pdf --profile balanced --pages 1
+
+# Hoặc chỉ định đường dẫn đầy đủ tới file trong examples
+python run_ocr.py examples/sample.pdf --profile balanced
+
+# Xử lý báo cáo trong inputs/ với profile balanced
+python run_ocr.py inputs/FPT_Baocaothuongnien_2022.pdf --profile balanced
 
 # Xử lý kèm đo đạc thông số benchmark chi tiết
 python run_ocr.py sample.pdf --profile balanced --benchmark
@@ -226,7 +239,7 @@ Mẫu kết quả trích xuất có sẵn có thể xem tại [examples/output/s
 
 ## 10. Bộ Kiểm Thử Tự Động (Regression Test Suite)
 
-Chạy toàn bộ 35 bài kiểm thử hồi quy:
+Chạy toàn bộ 39 bài kiểm thử hồi quy:
 ```bash
 pytest tests/ -q
 ```
@@ -234,7 +247,7 @@ pytest tests/ -q
 Kết quả:
 ```text
 ...................................
-35 passed in ~60s
+39 passed in ~60s
 ```
 
 Danh mục các bài kiểm thử bao gồm:
@@ -272,30 +285,3 @@ Hệ thống đã trải qua hai cấp độ đánh giá độc lập:
 | **Tỷ lệ kích hoạt Fallback** | $\le 12.00\%$ | **3.47% – 3.85%** | **TỐI ƯU HÓA TỐT** |
 
 ---
-
-### Phần B: Kết Quả Kiểm Thử Quy Mô Lớn Trên Toàn Bộ 100 PDF (7.362 Trang)
-
-Thực hiện kiểm thử tự động hàng loạt (batch runner) trên tập 100 file PDF báo cáo thường niên các công ty niêm yết trên sàn chứng khoán Việt Nam (từ `AAA`, `BCG`, `CLW`, `DGC`, `HPG`, `VIC`, đến `VNG`):
-
-#### 1. Tổng quan số liệu thực thi:
-- **Tổng số tài liệu xử lý**: **100 / 100 file hoàn tất** (tỷ lệ hoàn thành: 100%).
-- **Tổng số trang tài liệu đã quét**: **7.362 / 7.362 trang**.
-- **Tốc độ xử lý trung bình (Mean Speed)**: **10.83 giây / trang**.
-- **Tốc độ trung vị (Median Speed)**: **5.54 giây / trang** (do các trang Native Text chất lượng cao được xử lý tức thời trong ~0.05s).
-- **Phân vị 95 (P95 Speed)**: **14.37 giây / trang** (ngay cả các trang quét ảnh bảng biểu phức tạp nhất cũng không vượt ngưỡng 15s).
-- **Độ tin cậy nhận dạng trung bình (Mean OCR Confidence)**: **0.9614 (96.14%)**.
-- **Điểm chất lượng tài liệu trung bình (Mean Quality Score)**: **0.9748 (97.48%)**.
-
-#### 2. Phân loại cấu trúc tài liệu qua 100 PDF:
-- **Tài liệu thuần ảnh quét (Scanned Only)**: 40 tài liệu.
-- **Tài liệu dạng hỗn hợp (Mixed Native & Image)**: 60 tài liệu.
-- **Tài liệu chứa nhiều bảng biểu phức tạp (Table-Heavy)**: 34 tài liệu.
-- **Tài liệu chứa sơ đồ / biểu đồ tổ chức (Diagram-Heavy)**: 89 tài liệu.
-
-#### 3. Phân tích các trường hợp đặc thù & Độ ổn định:
-- **Tài liệu dung lượng lớn (Ví dụ: BCG)**: 139 trang, tổng thời gian xử lý 1.996,3 giây (~14.36 s/trang), chạy liên tục ổn định không tràn RAM (memory leak).
-- **Trường hợp tài liệu bị khóa / lỗi font vector**: Pipeline phát hiện tự động điểm Native Quality thấp ($< 0.70$), định tuyến chuyển sang OCR ảnh giúp cứu lại toàn bộ nội dung tiếng Việt có dấu thay vì xuất ra ký tự rác.
-- **Khả năng phục hồi (Resume)**: Khi tiến trình bị dừng giữa chừng, cờ `--resume` kích hoạt cơ chế đọc cache theo từng trang, chỉ xử lý tiếp các trang còn thiếu mà không phải chạy lại từ đầu.
-
----
-

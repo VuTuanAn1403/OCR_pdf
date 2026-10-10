@@ -15,9 +15,56 @@ from src.ocr.infrastructure.cache.artifact_cache import ArtifactCache
 from src.ocr.infrastructure.export.manifest_exporter import ManifestExporter
 from src.ocr.application.count_keywords import CountKeywordsUseCase
 
+
+
+def resolve_input_path(file_path: str) -> Path:
+    input_path = Path(file_path)
+    if input_path.is_file():
+        return input_path.resolve()
+
+    filename = input_path.name
+    cwd = Path.cwd()
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+
+    # Candidate paths to inspect in priority order
+    candidates = [
+        cwd / file_path,
+        cwd / "examples" / file_path,
+        cwd / "examples" / filename,
+        cwd / "inputs" / file_path,
+        cwd / "inputs" / filename,
+        project_root / file_path,
+        project_root / "examples" / file_path,
+        project_root / "examples" / filename,
+        project_root / "inputs" / file_path,
+        project_root / "inputs" / filename,
+    ]
+
+    checked_paths = []
+    for cand in candidates:
+        try:
+            resolved_cand = cand.resolve()
+        except Exception:
+            resolved_cand = cand
+
+        if resolved_cand not in checked_paths:
+            checked_paths.append(resolved_cand)
+            if resolved_cand.is_file():
+                return resolved_cand
+
+    error_lines = [
+        f"PDF file not found: '{file_path}'",
+        "Checked candidate paths:"
+    ]
+    for p in checked_paths:
+        error_lines.append(f"  - {p}")
+
+    raise FileNotFoundError("\n".join(error_lines))
+
+
 class ConvertDocumentUseCase:
     """
-    Main orchestration use case to convert a PDF document using the Hybrid OCR v2 Pipeline.
+    Main orchestration use case to convert a PDF document using the Hybrid OCR v3.1 Pipeline.
     """
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
@@ -51,7 +98,7 @@ class ConvertDocumentUseCase:
         keywords_file: Optional[str] = None
     ) -> ExtractedDocument:
         t0 = time.time()
-        pdf_path = Path(file_path).resolve()
+        pdf_path = resolve_input_path(file_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {file_path}")
 
@@ -96,9 +143,10 @@ class ConvertDocumentUseCase:
             )
             extracted_pages.append(p_result)
 
-            if p_result.page_type.value == "NATIVE_TEXT":
+            pt_str = p_result.page_type.value if hasattr(p_result.page_type, "value") else str(p_result.page_type)
+            if pt_str in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE"):
                 pages_native += 1
-            elif p_result.page_type.value == "MIXED":
+            elif pt_str == "MIXED":
                 pages_mixed += 1
             else:
                 pages_ocr += 1
@@ -107,10 +155,12 @@ class ConvertDocumentUseCase:
 
         total_duration = time.time() - t0
         mean_native_score = sum(p.quality.native_text_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
-        mean_ocr_conf = sum(p.quality.ocr_confidence for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
+        ocr_pages = [p for p in extracted_pages if p.quality.recognized_lines > 0]
+        mean_ocr_conf = sum(p.quality.ocr_confidence for p in ocr_pages) / len(ocr_pages) if ocr_pages else 0.0
         mean_qual_score = sum(p.quality.quality_score for p in extracted_pages) / len(extracted_pages) if extracted_pages else 1.0
 
         total_primary_lines = sum(p.quality.total_blocks for p in extracted_pages)
+        total_recognized_lines = sum(p.quality.recognized_lines for p in extracted_pages)
         fb_ratio = (total_fallback / total_primary_lines) if total_primary_lines > 0 else 0.0
 
         quality_report = DocumentQualityReport(
@@ -158,6 +208,7 @@ class ConvertDocumentUseCase:
                 "seconds_per_page": round(total_duration / len(target_pages), 2),
                 "pages_per_minute": round((len(target_pages) / total_duration) * 60, 2),
                 "primary_lines": total_primary_lines,
+                "recognized_lines": total_recognized_lines,
                 "fallback_lines": total_fallback,
                 "fallback_ratio": round(fb_ratio, 4),
                 "mean_confidence": round(mean_ocr_conf, 4),
