@@ -37,7 +37,9 @@ class BatchOCRRunner:
         excel_path: Optional[str] = "output/OCR_BENCHMARK_5_FILES.xlsx",
         force: bool = False,
         file_list: Optional[List[str]] = None,
-        keywords_file: Optional[str] = None
+        keywords_file: Optional[str] = None,
+        enable_llm: bool = False,
+        min_keyword_similarity: float = 0.80
     ):
         self.input_dir = Path(input_dir).resolve()
         self.output_dir = Path(output_dir).resolve()
@@ -48,6 +50,8 @@ class BatchOCRRunner:
         self.force = force
         self.file_list = file_list
         self.keywords_file = keywords_file
+        self.enable_llm = enable_llm
+        self.min_keyword_similarity = min_keyword_similarity
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.manifest_path = self.output_dir / "batch_manifest.json"
@@ -328,7 +332,9 @@ class BatchOCRRunner:
                         benchmark=True,
                         accuracy_report=has_gt,
                         ground_truth_dir=str(self.ground_truth_dir),
-                        keywords_file=self.keywords_file
+                        keywords_file=self.keywords_file,
+                        enable_llm_keywords=self.enable_llm,
+                        min_keyword_similarity=self.min_keyword_similarity
                     )
 
                     file_dur = time.time() - file_t0
@@ -662,6 +668,10 @@ def main():
     parser.add_argument("--files", nargs="+", default=None, help="Filter specific files to run in batch")
     parser.add_argument("--keywords-file", type=str, default=None,
                         help="Path to keywords text file (default: config/keywords.txt)")
+    parser.add_argument("--enable-llm", action="store_true",
+                        help="Enable 3-Tier LLM fuzzy keyword rechecking")
+    parser.add_argument("--min-keyword-similarity", type=float, default=0.86,
+                        help="Minimum similarity threshold for fuzzy keyword matching (default: 0.86)")
     args = parser.parse_args()
 
     runner = BatchOCRRunner(
@@ -671,7 +681,9 @@ def main():
         excel_path=args.excel,
         force=args.force,
         file_list=args.files,
-        keywords_file=args.keywords_file
+        keywords_file=args.keywords_file,
+        enable_llm=args.enable_llm,
+        min_keyword_similarity=args.min_keyword_similarity
     )
     runner.execute_batch(limit=args.limit)
 

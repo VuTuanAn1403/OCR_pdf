@@ -110,6 +110,10 @@ def main():
                         help="Enable verbose debug logging")
     parser.add_argument("--keywords-file", type=str, default=None,
                         help="Path to keywords text file (default: config/keywords.txt)")
+    parser.add_argument("--enable-llm", action="store_true",
+                        help="Enable 3-Tier LLM fuzzy keyword rechecking (detects OCR typos/diacritics)")
+    parser.add_argument("--min-keyword-similarity", type=float, default=0.86,
+                        help="Minimum similarity threshold for fuzzy keyword matching (default: 0.86)")
 
     args = parser.parse_args()
 
@@ -129,6 +133,8 @@ def main():
         print(f"Pages: {pages_list}")
     if args.resume:
         print("Resume: ENABLED (using .cache)")
+    if args.enable_llm:
+        print("LLM Keyword Recheck: ENABLED (3-Tier Hybrid)")
     print("=" * 60)
 
     try:
@@ -141,7 +147,9 @@ def main():
             benchmark=args.benchmark,
             accuracy_report=args.accuracy_report,
             ground_truth_dir=args.ground_truth,
-            keywords_file=args.keywords_file
+            keywords_file=args.keywords_file,
+            enable_llm_keywords=args.enable_llm,
+            min_keyword_similarity=args.min_keyword_similarity,
         )
 
         print("=" * 60)

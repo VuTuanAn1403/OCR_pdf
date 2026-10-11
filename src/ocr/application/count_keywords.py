@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from src.ocr.domain.models.keyword import KeywordReport
+from src.ocr.domain.models.llm_config import LLMConfig
 from src.ocr.infrastructure.postprocessing.keyword_counter import KeywordCounter
 from src.ocr.infrastructure.export.keyword_exporter import KeywordExporter
 
@@ -11,7 +12,7 @@ class CountKeywordsUseCase:
     Application use case that orchestrates keyword counting after OCR export:
     1. Loads keywords from the configuration file.
     2. Reads the ``result.md`` output.
-    3. Counts keyword frequencies.
+    3. Counts keyword frequencies (exact + optional 3-tier fuzzy LLM recheck).
     4. Exports ``count_keywords.md`` next to ``result.md``.
     """
 
@@ -21,6 +22,9 @@ class CountKeywordsUseCase:
         doc_dir: Path,
         document_id: str,
         keywords_file: Optional[str] = None,
+        enable_llm: bool = False,
+        min_similarity: float = 0.86,
+        llm_config: Optional[LLMConfig] = None,
     ) -> Optional[KeywordReport]:
         """
         Parameters
@@ -30,17 +34,21 @@ class CountKeywordsUseCase:
         document_id : str
             Identifier for the processed document.
         keywords_file : str | None
-            Path to the keywords text file.  When *None*, the default
-            ``config/keywords.txt`` is used (auto-created if absent).
+            Path to the keywords text file.
+        enable_llm : bool
+            Whether to activate Tier 2 & Tier 3 LLM rechecking.
+        min_similarity : float
+            Minimum similarity threshold (0.80 = 80%).
+        llm_config : LLMConfig | None
+            Custom LLM configuration if any.
 
         Returns
         -------
         KeywordReport | None
-            The keyword frequency report, or *None* if the step was skipped.
+            The keyword frequency report, or *None* if skipped.
         """
         # Resolve keywords file path
         if keywords_file is None:
-            # Try project-root config first, then bundled config inside package
             root_kw = Path("config/keywords.txt").resolve()
             bundled_kw = Path(__file__).parent.parent / "config" / "keywords.txt"
             if root_kw.exists():
@@ -48,7 +56,6 @@ class CountKeywordsUseCase:
             else:
                 keywords_file = str(bundled_kw)
 
-        # Gracefully skip if the file still does not exist after resolution
         kw_path = Path(keywords_file)
         if not kw_path.exists():
             print(f"[KEYWORDS] Keywords file not found: {keywords_file} — skipping keyword counting.")
@@ -75,6 +82,9 @@ class CountKeywordsUseCase:
             keywords=keywords,
             document_id=document_id,
             source_file=str(result_md_path),
+            enable_llm=enable_llm,
+            min_similarity=min_similarity,
+            llm_config=llm_config,
         )
 
         # Export

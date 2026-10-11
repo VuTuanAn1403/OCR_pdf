@@ -95,7 +95,9 @@ class ConvertDocumentUseCase:
         benchmark: bool = False,
         accuracy_report: bool = False,
         ground_truth_dir: str = "benchmark/ground_truth",
-        keywords_file: Optional[str] = None
+        keywords_file: Optional[str] = None,
+        enable_llm_keywords: bool = False,
+        min_keyword_similarity: float = 0.86,
     ) -> ExtractedDocument:
         t0 = time.time()
         pdf_path = resolve_input_path(file_path)
@@ -246,6 +248,8 @@ class ConvertDocumentUseCase:
                 doc_dir=doc_dir,
                 document_id=doc_id,
                 keywords_file=keywords_file,
+                enable_llm=enable_llm_keywords,
+                min_similarity=min_keyword_similarity,
             )
         except Exception as e:
             print(f"[WARN] Keyword counting failed: {e}")
