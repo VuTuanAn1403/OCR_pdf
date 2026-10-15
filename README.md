@@ -239,6 +239,29 @@ python scripts/check_installation.py
 python scripts/smoke_test.py
 ```
 
+#### 4. Chạy trên Kaggle
+
+File dùng cho Kaggle: [kaggle/ocr_pdf_kaggle.ipynb](kaggle/ocr_pdf_kaggle.ipynb).
+Trong notebook Kaggle, chọn **File → Import Notebook** để nhập file `.ipynb`, bật
+**Internet**, chọn GPU nếu dùng `DEVICE = "cuda"`, rồi thêm dataset chứa PDF qua
+**Add Input**. Chạy các ô theo thứ tự.
+
+- Mặc định `PROFILE = "local"`, `DEVICE = "cuda"`; kiểm tra trang 1 của PDF đầu tiên.
+- Chọn `balanced` hoặc `accuracy` để cài thêm Docling cho bảng/công thức; `fast` yêu cầu `DEVICE = "cpu"`.
+- Sửa `INPUT_ROOT`, `PDF_FILES`, `FILE_LIMIT` để chọn tài liệu. Có thể chỉ định file keyword riêng bằng `KEYWORDS_FILE`.
+- Sau khi xem kết quả thử, đặt `RUN_FULL_BATCH = True` và chạy lại để xử lý toàn bộ danh sách đã chọn. Mặc định một worker, không tự chia qua hai GPU.
+- Kết quả và log ở `/kaggle/working/ocr_pdf_results/`; file tải về là `/kaggle/working/ocr_pdf_results.zip`, gồm Markdown/JSON và `count_keywords.xlsx` cho từng tài liệu.
+- Môi trường Python 3.11, model và cache nằm trong `/tmp/ocr_pdf_kaggle/`, không đi vào ZIP. Resume dùng được trong cùng phiên; cần Save Version/tải kết quả trước khi kết thúc phiên Kaggle.
+
+Notebook sử dụng `run_ocr.py`/`run_batch.py` và `scripts/setup.sh` hiện có, không thay
+đổi pipeline. Đường `unified_gpu` V6.2 vẫn dùng launcher riêng ở mục 5.5. File này
+được kiểm tra cấu trúc/cú pháp và kiểm thử OCR native cục bộ; chưa thực thi trực tiếp
+trong phiên Kaggle. Thư mục `notebooks/` cũ vẫn đã được xóa.
+
+Kiểm chứng riêng file Kaggle: **8 kiểm thử đạt** (`tests/unit/test_kaggle_notebook.py`),
+gồm chọn PDF trùng tên/đuôi viết hoa, phát hiện lỗi đầu vào và lỗi tiến trình con,
+kiểm tra trạng thái từng file trong batch, OCR native thực tế, Excel keyword và ZIP.
+
 ---
 
 ## 5. Hướng Dẫn Sử Dụng (CLI)
