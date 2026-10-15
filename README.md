@@ -246,11 +246,13 @@ Trong notebook Kaggle, chọn **File → Import Notebook** để nhập file `.i
 **Internet**, chọn GPU nếu dùng `DEVICE = "cuda"`, rồi thêm dataset chứa PDF qua
 **Add Input**. Chạy các ô theo thứ tự.
 
-- Mặc định `PROFILE = "local"`, `DEVICE = "cuda"`; kiểm tra trang 1 của PDF đầu tiên.
+- Mặc định `PROFILE = "local"`, `DEVICE = "cuda"`; kiểm tra trang 1 của PDF đầu tiên rồi chạy đủ tối đa 50 PDF (`FILE_LIMIT = 50`, `RUN_FULL_BATCH = True`).
 - Chọn `balanced` hoặc `accuracy` để cài thêm Docling cho bảng/công thức; `fast` yêu cầu `DEVICE = "cpu"`.
 - Sửa `INPUT_ROOT`, `PDF_FILES`, `FILE_LIMIT` để chọn tài liệu. Có thể chỉ định file keyword riêng bằng `KEYWORDS_FILE`.
-- Sau khi xem kết quả thử, đặt `RUN_FULL_BATCH = True` và chạy lại để xử lý toàn bộ danh sách đã chọn. Mặc định một worker, không tự chia qua hai GPU.
-- Kết quả và log ở `/kaggle/working/ocr_pdf_results/`; file tải về là `/kaggle/working/ocr_pdf_results.zip`, gồm Markdown/JSON và `count_keywords.xlsx` cho từng tài liệu.
+- Đặt `RUN_FULL_BATCH = False` nếu chỉ muốn thử một vài trang; khi đó chưa tạo ma trận tổng hợp. Đặt `FILE_LIMIT = None` để xử lý toàn bộ PDF thay vì giới hạn 50. Mặc định một worker, không tự chia qua hai GPU.
+- Kết quả và log ở `/kaggle/working/ocr_pdf_results/`; ZIP `/kaggle/working/ocr_pdf_results.zip` gồm Markdown/JSON, `count_keywords.xlsx` từng tài liệu và Excel ma trận tổng hợp.
+- Với 50 PDF, ma trận là `/kaggle/working/ocr_pdf_results/MA_TRAN_DEM_TU_KHOA_50_FILES.xlsx`: 50 hàng tài liệu × 88 cột keyword, thêm một cột tên file (tổng 89 cột). Sheet `Thông tin` ghi quy tắc và nguồn PDF. Số file khác 50 thì tên Excel và số hàng theo số thực tế.
+- Ma trận giữ đúng 88 cột trong `MATRIX_KEYWORDS`, gồm hai cột `Internet di động` ở vị trí keyword 43 và 45 có cùng số đếm. Thứ tự và tên cột giữ nguyên; `KEYWORDS_FILE` tùy chỉnh chỉ áp dụng cho báo cáo Excel riêng từng file.
 - Môi trường Python 3.11, model và cache nằm trong `/tmp/ocr_pdf_kaggle/`, không đi vào ZIP. Resume dùng được trong cùng phiên; cần Save Version/tải kết quả trước khi kết thúc phiên Kaggle.
 
 Notebook sử dụng `run_ocr.py`/`run_batch.py` và `scripts/setup.sh` hiện có, không thay
@@ -258,9 +260,11 @@ Notebook sử dụng `run_ocr.py`/`run_batch.py` và `scripts/setup.sh` hiện c
 được kiểm tra cấu trúc/cú pháp và kiểm thử OCR native cục bộ; chưa thực thi trực tiếp
 trong phiên Kaggle. Thư mục `notebooks/` cũ vẫn đã được xóa.
 
-Kiểm chứng riêng file Kaggle: **8 kiểm thử đạt** (`tests/unit/test_kaggle_notebook.py`),
+Kiểm chứng riêng file Kaggle: **12 kiểm thử đạt** (`tests/unit/test_kaggle_notebook.py`),
 gồm chọn PDF trùng tên/đuôi viết hoa, phát hiện lỗi đầu vào và lỗi tiến trình con,
-kiểm tra trạng thái từng file trong batch, OCR native thực tế, Excel keyword và ZIP.
+kiểm tra trạng thái từng file trong batch, OCR native thực tế, Excel keyword và ZIP,
+ma trận đủ 50 hàng × 88 cột keyword với hai cột trùng đúng số đếm, cùng việc từ chối
+output chưa hoàn tất/đã hỏng thay vì ghi số 0.
 
 ---
 
@@ -409,6 +413,12 @@ python scripts/run_count_only.py FPT_Baocaothuongnien_2022 --keywords-file confi
 `target` bắt buộc, nhận đường dẫn thư mục chứa `result.md` hoặc ID tài liệu bên trong `output/` (hay `OCR_OUTPUT_DIR`). Đường dẫn danh sách tùy chỉnh được tính từ thư mục đang chạy lệnh. Danh sách mặc định luôn được tìm từ dự án; khi cài wheel, danh sách được đóng gói từ cùng file cấu hình nguồn. Chạy lại sẽ ghi đè báo cáo Excel, giữ nguyên nội dung Markdown/JSON OCR. Nếu bộ output có `COMPLETED.json` hợp lệ, dấu hoàn tất được cập nhật hash theo báo cáo mới; bộ output đã hỏng không được tự chứng nhận lại.
 
 **Báo cáo Excel:** sheet `Thống kê từ khóa` có tiêu đề, ID tài liệu, số keyword sau loại trùng, tổng số lần khớp; bảng gồm `STT`, `Từ khóa / Cụm từ`, `Số lần xuất hiện` và dòng `Tổng cộng`. Keyword được lưu dạng văn bản, kể cả khi bắt đầu bằng `=`.
+
+**Ma trận tổng hợp trên Kaggle:** bước 8 của `kaggle/ocr_pdf_kaggle.ipynb` đọc `result.md`
+của các tài liệu hoàn tất để tạo `MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx`, không OCR lại.
+Ma trận dùng danh sách 88 cột `MATRIX_KEYWORDS` độc lập với việc loại trùng trong
+báo cáo riêng từng file: hai cột `Internet di động` được giữ nguyên và điền cùng
+số đếm. Chỉ xuất sau khi chạy đủ lô; output thiếu/hỏng làm bước xuất báo lỗi.
 
 **Phạm vi và lỗi:** chỉ các trang đã OCR/xuất mới được đếm; nội dung chỉ nằm trong ảnh không được OCR hoặc đã bị ẩn khỏi Markdown không có trong kết quả đếm. Markdown được đọc nguyên văn, gồm tiêu đề, bảng và cú pháp/đường dẫn ảnh nếu chứa keyword. File từ khóa không tồn tại, không có từ khóa hợp lệ, thiếu `result.md` hoặc không ghi được Excel sẽ báo lỗi; không tự tạo danh sách mẫu. Đóng file Excel đang mở trước khi ghi đè trên Windows.
 

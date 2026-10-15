@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import types
 from zipfile import ZipFile
 
 import pymupdf
@@ -38,7 +39,7 @@ def test_notebook_is_clean_and_all_code_is_python():
     notebook, cells = _cells()
     assert notebook["nbformat"] == 4
     assert notebook["metadata"]["kaggle"]["isInternetEnabled"] is True
-    assert len(cells) == 8
+    assert len(cells) == 9
     for source in cells.values():
         ast.parse(source)
     assert all(not cell["outputs"] and cell["execution_count"] is None
@@ -139,15 +140,110 @@ def test_native_notebook_flow_creates_excel_and_download_zip(tmp_path, full_batc
         OCR_OUTPUT_DIR=str(results / "documents"), OCR_CACHE_DIR=str(runtime / "cache"))
     namespace.update(REPO_DIR=ROOT, OCR_PYTHON=Path(sys.executable), CACHE_DIR=runtime / "cache",
         KEYWORDS_PATH=keywords, HARDWARE_PATH=hardware, RUNTIME_ENV=environment)
-    for name in ("commands", "smoke", "batch"):
+    for name in ("commands", "smoke", "batch", "matrix"):
         exec(cells[name], namespace)
     assert namespace["SMOKE_SUMMARY"][0]["matches"] == 8
     if full_batch:
         assert namespace["BATCH_SUMMARY"][0]["matches"] == 8
+        assert namespace["MATRIX_PATH"].name == "MA_TRAN_DEM_TU_KHOA_1_FILES.xlsx"
+    else:
+        assert namespace["MATRIX_PATH"] is None
     _functions(cells["download"], namespace)
     archive = namespace["bundle_results"](results, tmp_path / "results.zip")
     with ZipFile(archive) as bundle:
         names = bundle.namelist()
         assert "smoke/annual/count_keywords.xlsx" in names
         assert ("documents/annual/count_keywords.xlsx" in names) == full_batch
+        assert ("MA_TRAN_DEM_TU_KHOA_1_FILES.xlsx" in names) == full_batch
         assert not any(".venv" in name or name.startswith("models/") for name in names)
+
+
+def _matrix_namespace(tmp_path, texts, *, completed=True):
+    from src.ocr.infrastructure.export.completion import mark_completed
+    namespace, cells = _namespace()
+    results = tmp_path / "results"
+    batch = results / "documents"
+    batch.mkdir(parents=True)
+    mapping = []
+    for index, text in enumerate(texts):
+        document_id = f"annual_{index + 1:02d}"
+        directory = batch / document_id
+        directory.mkdir()
+        (directory / "result.md").write_text(text, encoding="utf-8")
+        if completed:
+            mark_completed(directory, "PASS")
+        mapping.append({"document_id": document_id, "source": f"/input/{document_id}.pdf",
+                        "staged": f"/staged/{document_id}.pdf"})
+    (batch / "batch_manifest.json").write_text(json.dumps([
+        {"document_id": item["document_id"], "status": "COMPLETED"} for item in mapping
+    ]), encoding="utf-8")
+    namespace.update(REPO_DIR=ROOT, OCR_PYTHON=Path(sys.executable),
+        RESULTS_DIR=results, LOG_DIR=results / "logs", BATCH_DIR=batch,
+        INPUT_MAPPING=mapping, RUN_FULL_BATCH=True,
+        RUNTIME_ENV={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONPATH": str(ROOT)})
+    exec(cells["commands"], namespace)
+    return namespace, cells
+
+
+def test_matrix_exports_50_files_and_exactly_88_ordered_keyword_columns(tmp_path):
+    from openpyxl import load_workbook
+    texts = ["Trí tuệ nhân tạo. " + "Internet di động. " * (index % 3) +
+             "HỌC MÁY. " * (index % 2) for index in range(50)]
+    namespace, cells = _matrix_namespace(tmp_path, texts)
+    expected_keywords = [line.strip() for line in (ROOT / "config/keywords.txt").read_text(
+        encoding="utf-8-sig").splitlines() if line.strip()]
+    assert namespace["MATRIX_KEYWORDS"] == expected_keywords
+    exec(cells["matrix"], namespace)
+    assert namespace["MATRIX_PATH"].name == "MA_TRAN_DEM_TU_KHOA_50_FILES.xlsx"
+    workbook = load_workbook(namespace["MATRIX_PATH"], data_only=True)
+    try:
+        sheet = workbook["Ma trận từ khóa"]
+        values = list(sheet.iter_rows(values_only=True))
+        assert sheet.max_row == 51 and sheet.max_column == 89
+        assert list(values[0]) == ["Tệp PDF", *expected_keywords]
+        assert values[0][43] == values[0][45] == "Internet di động"
+        assert sheet.freeze_panes == "B2"
+        assert sheet.auto_filter.ref == "A1:CK51"
+        for index, row in enumerate(values[1:]):
+            assert row[0] == f"annual_{index + 1:02d}.pdf"
+            assert row[1] == 1  # Trí tuệ nhân tạo.
+            assert row[7] == index % 2  # học máy, ignoring case.
+            assert row[43] == row[45] == index % 3
+            assert row[6] == 0  # robot thông minh is absent.
+            assert all(type(count) is int for count in row[1:])
+        info = workbook["Thông tin"]
+        assert info["B2"].value == 50
+        assert info["B3"].value == 88
+        assert info["B4"].value == 87
+    finally:
+        workbook.close()
+
+
+@pytest.mark.parametrize("tampered", [False, True])
+def test_matrix_does_not_turn_incomplete_or_damaged_documents_into_zero_counts(tmp_path, tampered):
+    namespace, cells = _matrix_namespace(tmp_path, ["Internet di động"], completed=tampered)
+    if tampered:
+        (namespace["BATCH_DIR"] / "annual_01/result.md").write_text("modified", encoding="utf-8")
+    with pytest.raises(subprocess.CalledProcessError):
+        exec(cells["matrix"], namespace)
+    assert not list(namespace["RESULTS_DIR"].glob("MA_TRAN_DEM_TU_KHOA_*.xlsx"))
+
+
+def test_zip_can_be_downloaded_when_an_earlier_cell_failed_before_matrix_export(tmp_path, monkeypatch):
+    namespace, cells = _namespace()
+    results = tmp_path / "results"
+    results.mkdir()
+    (results / "error.log").write_text("Earlier cell failed", encoding="utf-8")
+    namespace.update(RESULTS_DIR=results, ARCHIVE_PATH=tmp_path / "results.zip")
+    links = []
+    package = types.ModuleType("IPython")
+    display_module = types.ModuleType("IPython.display")
+    display_module.FileLink = lambda path: path
+    display_module.display = links.append
+    package.display = display_module
+    monkeypatch.setitem(sys.modules, "IPython", package)
+    monkeypatch.setitem(sys.modules, "IPython.display", display_module)
+    exec(cells["download"], namespace)
+    assert (tmp_path / "results.zip").is_file()
+    assert len(links) == 1
+    assert links[0].endswith("results.zip")
