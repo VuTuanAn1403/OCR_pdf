@@ -44,6 +44,10 @@ def test_notebook_is_clean_and_all_code_is_python():
         ast.parse(source)
     assert all(not cell["outputs"] and cell["execution_count"] is None
                for cell in notebook["cells"] if cell["cell_type"] == "code")
+    namespace, _ = _namespace()
+    assert namespace["FILE_LIMIT"] is None
+    assert namespace["PDF_FILES"] == []
+    assert namespace["RUN_FULL_BATCH"] is True
 
 
 @pytest.mark.parametrize("exit_code", [0, 7])
@@ -185,25 +189,26 @@ def _matrix_namespace(tmp_path, texts, *, completed=True):
     return namespace, cells
 
 
-def test_matrix_exports_50_files_and_exactly_88_ordered_keyword_columns(tmp_path):
+@pytest.mark.parametrize("document_count", [50, 53])
+def test_matrix_exports_every_file_and_exactly_88_ordered_keyword_columns(tmp_path, document_count):
     from openpyxl import load_workbook
     texts = ["Trí tuệ nhân tạo. " + "Internet di động. " * (index % 3) +
-             "HỌC MÁY. " * (index % 2) for index in range(50)]
+             "HỌC MÁY. " * (index % 2) for index in range(document_count)]
     namespace, cells = _matrix_namespace(tmp_path, texts)
     expected_keywords = [line.strip() for line in (ROOT / "config/keywords.txt").read_text(
         encoding="utf-8-sig").splitlines() if line.strip()]
     assert namespace["MATRIX_KEYWORDS"] == expected_keywords
     exec(cells["matrix"], namespace)
-    assert namespace["MATRIX_PATH"].name == "MA_TRAN_DEM_TU_KHOA_50_FILES.xlsx"
+    assert namespace["MATRIX_PATH"].name == f"MA_TRAN_DEM_TU_KHOA_{document_count}_FILES.xlsx"
     workbook = load_workbook(namespace["MATRIX_PATH"], data_only=True)
     try:
         sheet = workbook["Ma trận từ khóa"]
         values = list(sheet.iter_rows(values_only=True))
-        assert sheet.max_row == 51 and sheet.max_column == 89
+        assert sheet.max_row == document_count + 1 and sheet.max_column == 89
         assert list(values[0]) == ["Tệp PDF", *expected_keywords]
         assert values[0][43] == values[0][45] == "Internet di động"
         assert sheet.freeze_panes == "B2"
-        assert sheet.auto_filter.ref == "A1:CK51"
+        assert sheet.auto_filter.ref == f"A1:CK{document_count + 1}"
         for index, row in enumerate(values[1:]):
             assert row[0] == f"annual_{index + 1:02d}.pdf"
             assert row[1] == 1  # Trí tuệ nhân tạo.
@@ -212,7 +217,7 @@ def test_matrix_exports_50_files_and_exactly_88_ordered_keyword_columns(tmp_path
             assert row[6] == 0  # robot thông minh is absent.
             assert all(type(count) is int for count in row[1:])
         info = workbook["Thông tin"]
-        assert info["B2"].value == 50
+        assert info["B2"].value == document_count
         assert info["B3"].value == 88
         assert info["B4"].value == 87
     finally:

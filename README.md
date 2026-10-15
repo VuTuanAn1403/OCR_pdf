@@ -246,12 +246,12 @@ Trong notebook Kaggle, chọn **File → Import Notebook** để nhập file `.i
 **Internet**, chọn GPU nếu dùng `DEVICE = "cuda"`, rồi thêm dataset chứa PDF qua
 **Add Input**. Chạy các ô theo thứ tự.
 
-- Mặc định `PROFILE = "local"`, `DEVICE = "cuda"`; kiểm tra trang 1 của PDF đầu tiên rồi chạy đủ tối đa 50 PDF (`FILE_LIMIT = 50`, `RUN_FULL_BATCH = True`).
+- Mặc định `PROFILE = "local"`, `DEVICE = "cuda"`; kiểm tra trang 1 của PDF đầu tiên rồi chạy đủ tất cả PDF trong input, gồm các thư mục con (`FILE_LIMIT = None`, `PDF_FILES = []`, `RUN_FULL_BATCH = True`).
 - Chọn `balanced` hoặc `accuracy` để cài thêm Docling cho bảng/công thức; `fast` yêu cầu `DEVICE = "cpu"`.
 - Sửa `INPUT_ROOT`, `PDF_FILES`, `FILE_LIMIT` để chọn tài liệu. Có thể chỉ định file keyword riêng bằng `KEYWORDS_FILE`.
-- Đặt `RUN_FULL_BATCH = False` nếu chỉ muốn thử một vài trang; khi đó chưa tạo ma trận tổng hợp. Đặt `FILE_LIMIT = None` để xử lý toàn bộ PDF thay vì giới hạn 50. Mặc định một worker, không tự chia qua hai GPU.
+- Đặt `RUN_FULL_BATCH = False` nếu chỉ muốn thử một vài trang; khi đó chưa tạo ma trận tổng hợp. Không giới hạn số tài liệu theo mặc định; chỉ đặt `FILE_LIMIT` thành số nguyên dương khi muốn giới hạn một lượt chạy. Mặc định một worker, không tự chia qua hai GPU.
 - Kết quả và log ở `/kaggle/working/ocr_pdf_results/`; ZIP `/kaggle/working/ocr_pdf_results.zip` gồm Markdown/JSON, `count_keywords.xlsx` từng tài liệu và Excel ma trận tổng hợp.
-- Với 50 PDF, ma trận là `/kaggle/working/ocr_pdf_results/MA_TRAN_DEM_TU_KHOA_50_FILES.xlsx`: 50 hàng tài liệu × 88 cột keyword, thêm một cột tên file (tổng 89 cột). Sheet `Thông tin` ghi quy tắc và nguồn PDF. Số file khác 50 thì tên Excel và số hàng theo số thực tế.
+- Với N PDF trong input, ma trận là `/kaggle/working/ocr_pdf_results/MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx`: N hàng tài liệu × 88 cột keyword, thêm một cột tên file (tổng 89 cột). Tất cả tài liệu được gom trong cùng một Excel; sheet `Thông tin` ghi số file thực tế, quy tắc và nguồn PDF.
 - Ma trận giữ đúng 88 cột trong `MATRIX_KEYWORDS`, gồm hai cột `Internet di động` ở vị trí keyword 43 và 45 có cùng số đếm. Thứ tự và tên cột giữ nguyên; `KEYWORDS_FILE` tùy chỉnh chỉ áp dụng cho báo cáo Excel riêng từng file.
 - Môi trường Python 3.11, model và cache nằm trong `/tmp/ocr_pdf_kaggle/`, không đi vào ZIP. Resume dùng được trong cùng phiên; cần Save Version/tải kết quả trước khi kết thúc phiên Kaggle.
 
@@ -260,10 +260,10 @@ Notebook sử dụng `run_ocr.py`/`run_batch.py` và `scripts/setup.sh` hiện c
 được kiểm tra cấu trúc/cú pháp và kiểm thử OCR native cục bộ; chưa thực thi trực tiếp
 trong phiên Kaggle. Thư mục `notebooks/` cũ vẫn đã được xóa.
 
-Kiểm chứng riêng file Kaggle: **12 kiểm thử đạt** (`tests/unit/test_kaggle_notebook.py`),
+Kiểm chứng riêng file Kaggle: **13 kiểm thử đạt** (`tests/unit/test_kaggle_notebook.py`),
 gồm chọn PDF trùng tên/đuôi viết hoa, phát hiện lỗi đầu vào và lỗi tiến trình con,
 kiểm tra trạng thái từng file trong batch, OCR native thực tế, Excel keyword và ZIP,
-ma trận đủ 50 hàng × 88 cột keyword với hai cột trùng đúng số đếm, cùng việc từ chối
+ma trận đủ 50 hoặc 53 hàng × 88 cột keyword (không bị cắt ở 50) với hai cột trùng đúng số đếm, cùng việc từ chối
 output chưa hoàn tất/đã hỏng thay vì ghi số 0.
 
 ---
