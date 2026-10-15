@@ -145,6 +145,8 @@ def main():
                         help="Resume processing by skipping pages in the page cache")
     parser.add_argument("--debug", action="store_true",
                         help="Enable verbose debug logging")
+    parser.add_argument("--keywords-file", default=None,
+                        help="UTF-8 keyword file, one phrase per line (default: config/keywords.txt)")
     parser.add_argument("--log-format", choices=LOG_FORMATS, default="text",
                         help="text keeps console progress; json writes JSON lines with run/doc/page/stage to stderr")
 
@@ -196,6 +198,7 @@ def main():
             warmup=args.warmup_docling,
             cache_dir=args.cache_dir,
             output_mode=args.output_mode,
+            keywords_file=args.keywords_file,
         )
         recorder.add_document(doc)
         recorder.write(Path(args.output) / doc.document_id / "run_manifest.json")

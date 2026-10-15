@@ -1,0 +1,44 @@
+profiles:
+  unified_gpu:
+    profile: unified_gpu
+    device: cuda
+    document_layout: {method: region_tree_graph_v1}
+    native_first: true
+    render_dpi: 180
+    primary_engine: vietocr
+    num_threads: 2
+    batch_size: 4
+    layout: accurate
+    model_registry: models/v62/runtime-models.json
+    runtime:
+      scheduler: document_two_phase_v1
+      phase_timeout_seconds: 14400
+      lease_timeout_seconds: 60
+    docling:
+      enabled: true
+      page_selection: all
+      tables: true
+      formulas: true
+      table_mode: fast
+      num_threads: 2
+      ocr: false
+      formula_max_tokens: 256
+      timeout_seconds: 240
+      startup_timeout_seconds: 900
+      on_error: warn
+      strict_gpu: true
+      verify_placement: true
+    fallback_enabled: true
+    fallback_only_on_review: true
+    max_fallback_region_ratio: 0.15
+    max_fallback_regions_per_page: 5
+    fallback_upscale_dpi: 250
+    min_confidence: 0.80
+    numeric_retry_threshold: 0.85
+    orientation_fallback_enabled: true
+    vector_table_min_native_score: 0.90
+    skip_vector_tables_on_restricted_pdf: true
+    two_up_detection_enabled: true
+    multi_region_detection_enabled: true
+    page_timeout_seconds: 180
+    native_quality: {reliable_threshold: 0.90, review_threshold: 0.70}

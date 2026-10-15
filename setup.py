@@ -7,6 +7,7 @@ from setuptools.command.build_py import build_py
 
 ROOT = Path(__file__).resolve().parent
 BUNDLES = {
+    "keywords.txt": "config/keywords.txt",
     "profiles.yaml": "config/profiles.yaml",
     "docling_structure_worker.py": "scripts/docling_structure_worker.py",
     **{f"hardware/{path.name}": f"config/hardware/{path.name}"

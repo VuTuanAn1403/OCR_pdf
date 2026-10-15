@@ -2,6 +2,12 @@
 .git
 .venv
 .venv-docling
+.venv-v62
+.venv-v62-clean
+.venv-v62-gpu
+.venv-cpu-benchmark
+.pytest_cache
+.pytest_tmp
 .cache
 build
 *.egg-info

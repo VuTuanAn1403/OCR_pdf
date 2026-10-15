@@ -81,6 +81,9 @@ def model_hashes(profile_config: Optional[Mapping[str, Any]] = None) -> dict[str
     layout = (profile_config or {}).get("layout_model")
     if isinstance(layout, Mapping) and layout.get("model_path"):
         hashes["layout/model"] = model_file_sha256(Path(layout["model_path"]).expanduser())
+    detector = (profile_config or {}).get("text_detector")
+    if isinstance(detector, Mapping) and detector.get("model_path"):
+        hashes["text_detector/model"] = model_file_sha256(Path(detector["model_path"]).expanduser())
     return hashes
 
 

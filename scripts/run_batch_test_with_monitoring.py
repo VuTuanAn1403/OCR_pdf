@@ -55,11 +55,12 @@ class SystemMonitor(threading.Thread):
     Background worker that continuously samples CPU utilization, system RAM,
     and process memory consumption during the batch test execution.
     """
-    def __init__(self, interval: float = 1.0):
+    def __init__(self, interval: float = 1.0, existing_samples: Optional[List[Dict[str, Any]]] = None):
         super().__init__(daemon=True)
         self.interval = interval
         self.stop_event = threading.Event()
-        self.samples: List[Dict[str, Any]] = []
+        self.samples: List[Dict[str, Any]] = list(existing_samples or [])
+        self.prev_elapsed: float = float(self.samples[-1]["elapsed_seconds"]) if self.samples else 0.0
         self.current_file: str = "INITIALIZING"
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
@@ -76,7 +77,7 @@ class SystemMonitor(threading.Thread):
 
         while not self.stop_event.is_set():
             t_now = time.time()
-            elapsed = round(t_now - self.start_time, 2)
+            elapsed = round(self.prev_elapsed + (t_now - self.start_time), 2)
             sys_cpu = psutil.cpu_percent(interval=None)
             mem = psutil.virtual_memory()
             proc_cpu = self.proc.cpu_percent(interval=None)
@@ -121,7 +122,7 @@ class SystemMonitor(threading.Thread):
         if not self.samples:
             return {}
 
-        total_duration = round((self.end_time or time.time()) - (self.start_time or time.time()), 2)
+        total_duration = round(self.prev_elapsed + ((self.end_time or time.time()) - (self.start_time or time.time())), 2)
         sys_cpus = [s["system_cpu_percent"] for s in self.samples]
         proc_cpus = [s["process_cpu_percent"] for s in self.samples]
         sys_rams = [s["system_ram_used_mb"] for s in self.samples]
@@ -398,6 +399,8 @@ def main(argv=None) -> None:
     parser.add_argument("--files", nargs="+", default=None, help="Only test these PDF filenames or stems")
     parser.add_argument("--excel", default=None, help="Excel output path (default: OCR_BENCHMARK_RESULTS.xlsx in --output)")
     parser.add_argument("--interval", type=float, default=1.0, help="Monitoring sampling interval in seconds (default: 1.0)")
+    parser.add_argument("--max-files", type=int, default=None, help="Stop this run gracefully after processing N files")
+    parser.add_argument("--max-seconds", type=float, default=None, help="Stop this run gracefully after N seconds before starting next file")
     parser.add_argument("--force", action="store_true", help="Force re-run even if cached")
     args = parser.parse_args(argv)
     for option in ("threads_per_worker", "batch_size", "limit"):
@@ -463,18 +466,43 @@ def main(argv=None) -> None:
     print(f"[*] System RAM:        {psutil.virtual_memory().total / (1024**3):.2f} GB")
     print("=" * 80)
 
-    # 1. Start Background System Monitor
-    monitor = SystemMonitor(interval=args.interval)
+    # 1. Start Background System Monitor (load prior samples if available)
+    existing_samples = []
+    raw_metrics_file = output_dir / "system_metrics.json"
+    if not args.force and raw_metrics_file.exists():
+        try:
+            with open(raw_metrics_file, "r", encoding="utf-8") as f:
+                prev_json = json.load(f)
+                existing_samples = prev_json.get("samples", [])
+        except Exception:
+            existing_samples = []
+
+    monitor = SystemMonitor(interval=args.interval, existing_samples=existing_samples)
     monitor.start()
     print(f"[*] Background System Monitor: RUNNING (polling CPU & RAM every {args.interval}s)...")
+
+    class GracefulBatchStop(BaseException):
+        pass
+
+    processed_files_count = 0
+    batch_t0 = time.time()
 
     # Hook converter execute to notify monitor of active file
     orig_execute = runner.converter.execute
     def monitored_execute(*exec_args, **exec_kwargs):
+        nonlocal processed_files_count
+        if args.max_seconds and (time.time() - batch_t0) >= args.max_seconds:
+            print(f"\n[INFO] Reached max run duration ({args.max_seconds}s). Gracefully stopping batch.")
+            raise GracefulBatchStop()
+        if args.max_files and processed_files_count >= args.max_files:
+            print(f"\n[INFO] Reached target file count ({args.max_files} files). Gracefully stopping batch.")
+            raise GracefulBatchStop()
+
         f_path = exec_kwargs.get("file_path") or (exec_args[0] if exec_args else "")
         f_name = Path(f_path).name if f_path else "unknown"
         monitor.set_file_context(f_name)
         res = orig_execute(*exec_args, **exec_kwargs)
+        processed_files_count += 1
         try:
             monitor.save_reports(output_dir)
         except Exception:
@@ -483,10 +511,12 @@ def main(argv=None) -> None:
 
     runner.converter.execute = monitored_execute
 
-    batch_t0 = time.time()
     exit_code = 0
     try:
         runner.execute_batch(limit=args.limit)
+    except GracefulBatchStop:
+        print("\n[INFO] Batch cycle finished cleanly under target limit. Reports updated successfully.")
+        exit_code = 0
     except KeyboardInterrupt:
         print("\n[WARN] Batch execution interrupted by user!")
         exit_code = 130
@@ -551,6 +581,12 @@ def generate_test_markdown_report(output_dir: Path, total_files: int, excel_path
     summary = batch_data.get("summary", {})
     files = batch_data.get("files", [])
 
+    completed_files = [f for f in files if f.get("status") in ("COMPLETED", "CACHED")]
+    tot_pages = sum(f.get("total_pages", 0) for f in files)
+    tot_batch = sum(f.get("wall_clock_seconds", 0) or 0 for f in completed_files)
+    avg_sec = (tot_batch / tot_pages) if tot_pages > 0 else 0.0
+    ppm_all = ((tot_pages / tot_batch) * 60) if tot_batch > 0 else 0.0
+
     md_lines = [
         f"# Báo Cáo Kết Quả Kiểm Thử {len(files)} Tệp PDF Inputs",
         "",
@@ -558,11 +594,11 @@ def generate_test_markdown_report(output_dir: Path, total_files: int, excel_path
         f"- **Profile OCR:** `{summary.get('profile', 'unknown')}`",
         f"- **Số tệp được chọn:** {total_files}",
         f"- **Tổng số tệp đã kiểm thử:** {summary.get('total_files', len(files))}",
-        f"- **Số tệp hoàn tất thành công:** {summary.get('completed', 0)}",
-        f"- **Tổng số trang đã xử lý:** {summary.get('processed_pages', 0)} trang",
-        f"- **Tổng thời gian xử lý:** {summary.get('total_batch_duration_seconds', 0):.2f} giây (~{summary.get('total_batch_duration_seconds', 0)/60:.1f} phút)",
-        f"- **Tốc độ trung bình toàn bộ:** {summary.get('average_seconds_per_page', 0):.2f} giây/trang",
-        f"- **Thông lượng xử lý:** {summary.get('overall_pages_per_minute', 0):.2f} trang/phút",
+        f"- **Số tệp hoàn tất thành công:** {len(completed_files)}",
+        f"- **Tổng số trang đã xử lý:** {tot_pages} trang",
+        f"- **Tổng thời gian xử lý:** {tot_batch:.2f} giây (~{tot_batch/60:.1f} phút / ~{tot_batch/3600:.2f} giờ)",
+        f"- **Tốc độ trung bình toàn bộ:** {avg_sec:.2f} giây/trang",
+        f"- **Thông lượng xử lý:** {ppm_all:.2f} trang/phút",
         "",
         "## Chi Tiết Kết Quả Từng Tệp",
         "",
@@ -571,8 +607,15 @@ def generate_test_markdown_report(output_dir: Path, total_files: int, excel_path
     ]
 
     for item in files:
+        w_sec = item.get('wall_clock_seconds')
+        w_sec_str = f"{w_sec:.2f}s" if isinstance(w_sec, (int, float)) else "-"
+        s_page = item.get('seconds_per_page')
+        s_page_str = f"{s_page:.2f}s" if isinstance(s_page, (int, float)) else "-"
+        p_min = item.get('pages_per_minute')
+        p_min_str = f"{p_min:.2f}" if isinstance(p_min, (int, float)) else "-"
+
         md_lines.append(
-            f"| `{item.get('file_name')}` | {item.get('file_size_mb')} | {item.get('total_pages')} | {item.get('wall_clock_seconds', 0):.2f}s | {item.get('seconds_per_page', 0):.2f}s | {item.get('pages_per_minute', 0):.2f} | {item.get('pages_native', 0)} | {item.get('pages_ocr', 0)} | {item.get('pages_mixed', 0)} | **{item.get('status')}** |"
+            f"| `{item.get('file_name')}` | {item.get('file_size_mb')} | {item.get('total_pages')} | {w_sec_str} | {s_page_str} | {p_min_str} | {item.get('pages_native') or 0} | {item.get('pages_ocr') or 0} | {item.get('pages_mixed') or 0} | **{item.get('status')}** |"
         )
 
     md_lines.extend([

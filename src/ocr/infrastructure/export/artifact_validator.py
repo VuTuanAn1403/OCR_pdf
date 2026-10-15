@@ -119,6 +119,11 @@ def _validate_document_artifacts(
         counts["pages_markdown"] += 1
         markdown_files.append(markdown_path)
         markdown = markdown_path.read_text(encoding="utf-8")
+        for reason in page_data.get("metadata", {}).get("layout_review", []):
+            warnings.append(f"Page {page_num}: layout {reason.get('code')} requires review")
+        for block in page_data.get("blocks", []):
+            for code in block.get("review_reason_codes", []):
+                warnings.append(f"Page {page_num}: source {block.get('source_id')} {code} requires review")
         separator_count = sum(bool(_PIPE_SEPARATOR.fullmatch(line)) for line in markdown.splitlines())
         counts["pipe_tables_markdown"] += separator_count
         if "```mermaid" in markdown:
@@ -334,7 +339,7 @@ def _validate_document_contracts(doc_dir: Path, errors: List[str], warnings: Lis
     if not is_v6:
         return
     if declaration is not None and (not isinstance(declaration, dict)
-            or declaration.get("schema_version") != OUTPUT_CONTRACT_VERSION
+            or declaration.get("schema_version") not in (OUTPUT_CONTRACT_VERSION, "output-v6.2-layout")
             or declaration.get("required_artifacts") != list(V6_ARTIFACTS)):
         errors.append("manifest.json has an invalid output_contract declaration")
     missing = [name for name in V6_ARTIFACTS if not (doc_dir / name).is_file()]
@@ -352,6 +357,27 @@ def _validate_document_contracts(doc_dir: Path, errors: List[str], warnings: Lis
     if missing or len(payloads) != 3:
         return
     extraction, structure, document = (payloads[name] for name in V6_ARTIFACTS[:-1])
+    modern = manifest.get("document_layout", {}).get("method") == "region_tree_graph_v1"
+    expected_schema = "extraction-v2-layout" if modern else "extraction-v1"
+    if extraction.get("schema_version") != expected_schema:
+        errors.append("extraction.json schema differs from manifest document_layout method")
+    if isinstance(declaration, dict) and declaration.get("schema_version") != ("output-v6.2-layout" if modern else OUTPUT_CONTRACT_VERSION):
+        errors.append("output_contract schema differs from document_layout method")
+    if manifest.get("document_layout", {}).get("method") == "region_tree_graph_v1":
+        sidecars = {}
+        for name in ("layout_order.json", "furniture.json"):
+            try:
+                sidecars[name] = json.loads((doc_dir / name).read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                errors.append(f"Required layout sidecar {name} cannot be read: {exc}")
+        if "layout_order.json" in sidecars:
+            declared = sidecars["layout_order.json"].get("pages", [])
+            expected = [(p["page"], p.get("ordered_item_ids")) for p in extraction["pages"]]
+            if [(p.get("page"), p.get("ordered_item_ids")) for p in declared] != expected:
+                errors.append("layout_order.json flow differs from extraction.json")
+        if ("furniture.json" in sidecars and sidecars["furniture.json"].get("context_hash")
+                != manifest.get("furniture", {}).get("context_hash")):
+            errors.append("furniture.json context differs from manifest")
     contract_errors = validate_contract_set(extraction, document, structure)
     errors.extend(contract_errors)
     if contract_errors:

@@ -1,0 +1,27 @@
+{
+  "status": "CPU_ADAPTER_SMOKE_ONLY",
+  "page": 10,
+  "input": "inputs/CSM_Baocaothuongnien_2025.pdf",
+  "model_sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+  "selected_for_production": false,
+  "diagnostic_legacy_environment": true,
+  "image_shape": [
+    1980,
+    3060,
+    3
+  ],
+  "scope": "full_page",
+  "layout_roi_gate": false,
+  "detections": 48,
+  "placement": {
+    "status": "VERIFIED_INFERENCE",
+    "expected_provider": "CPUExecutionProvider",
+    "kernel_counts": {
+      "CPUExecutionProvider": 400
+    },
+    "cpu_auxiliary_ops": [],
+    "profile_path": "C:\\kk_2\\OCR_pdf\\.cache\\v62-detector-smoke\\detector_2026-10-15_19-32-46_880.json",
+    "model_sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9"
+  },
+  "quality_acceptance": "NOT_EVALUATED"
+}

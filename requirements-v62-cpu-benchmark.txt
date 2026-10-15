@@ -1,0 +1,3 @@
+# Candidate dependency ranges, NOT a validated platform lock. Use a clean venv.
+-r requirements.txt
+onnxruntime>=1.18.0,<=1.29.0

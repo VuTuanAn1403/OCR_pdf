@@ -1,0 +1,69 @@
+{
+  "schema_version": "v62-runtime-models-v1",
+  "quality_acceptance": "NOT_EVALUATED",
+  "purpose": "GPU integration candidate; model selection on GT remains pending",
+  "snapshots": {
+    "layout": {
+      "repo": "docling-project/docling-layout-heron",
+      "revision": "8f39ad3c0b4c58e9c2d2c84a38465abf757272d8"
+    },
+    "table": {
+      "repo": "docling-project/docling-models",
+      "revision": "fc0f2d45e2218ea24bce5045f58a389aed16dc23"
+    },
+    "formula": {
+      "repo": "docling-project/CodeFormulaV2",
+      "revision": "ecedbe111d15c2dc60bfd4a823cbe80127b58af4"
+    }
+  },
+  "text_detector": {
+    "adapter": "onnx-db-map-v1",
+    "model_path": "models\\v62\\ch_PP-OCRv4_det_infer.onnx",
+    "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "scope": "full_page",
+    "max_side": 1536,
+    "gpu_mem_limit_mb": 1024
+  },
+  "layout_model": {
+    "adapter": "hf_rtdetr_torch",
+    "model_path": "models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+    "on_error": "raise",
+    "render_dpi": 144
+  },
+  "files": {
+    "models/v62/ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+    "models/vietocr/base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
+    "models/vietocr/vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
+    "models/vietocr/vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/.gitattributes": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/docling_heron_400.png": "e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/preprocessor_config.json": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/README.md": "175700839bc7808eac6af1d0c23e4f483606ab2276fe01122f4093e61a1a65b6",
+    "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/refs/main": "8084bbc31e333903f4bd839da812667ebd7dca0e27f6a193e372828ae11aabe5",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/.gitattributes": "360aba3ff7ce75396f13f0a77925fe9e79997e8d4bac064595ebb00c82700386",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/.gitignore": "b44b404189eaff3631c470946e7350c2e88cead304d332a8ad50325e6f56e95d",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/config.json": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/README.md": "d17f233378eff1240b623b36da76ee8b40afcca05d505949713bf03f7e00822a",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/accurate/tm_config.json": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tableformer_fast.safetensors": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/snapshots/fc0f2d45e2218ea24bce5045f58a389aed16dc23/model_artifacts/tableformer/fast/tm_config.json": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+    "models/docling/huggingface/hub/models--docling-project--docling-models/refs/v2.3.0": "7eb53216902c7f3103528631e03d9f64f235d52b4ba8e59f662617ccd5cba0c4",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/.gitattributes": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/added_tokens.json": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/chat_template.json": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/config.json": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/generation_config.json": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/model.safetensors": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/preprocessor_config.json": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/processor_config.json": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/README.md": "684604c08aa8cc32b3d65049bc9794b57f3fc510953148ad3ba61d35f60bef9a",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/special_tokens_map.json": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer.json": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/tokenizer_config.json": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/snapshots/ecedbe111d15c2dc60bfd4a823cbe80127b58af4/vocab.json": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+    "models/docling/huggingface/hub/models--docling-project--CodeFormulaV2/refs/main": "b08c95847202b4734e6da618a5a559b06eff263d93bd47117f18478e6e59b6b5"
+  }
+}

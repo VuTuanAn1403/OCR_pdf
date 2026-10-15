@@ -6,7 +6,7 @@ from src.ocr.domain.models.schema import PAGE_SCHEMA_VERSION
 from src.ocr.runtime.fingerprint import source_fingerprint
 from src.ocr.runtime.models import model_fingerprint, model_hashes
 
-PIPELINE_VERSION = "6.1.0"
+PIPELINE_VERSION = "6.2.0.dev2"
 
 class ManifestExporter:
     """

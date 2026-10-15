@@ -1,0 +1,46 @@
+{
+  "schema_version": "v62-implementation-verification-v1",
+  "date": "2026-10-15",
+  "timezone": "Asia/Bangkok",
+  "implementation_state": "EXPERIMENTAL_PARTIAL",
+  "pipeline_version": "6.1.0",
+  "source_fingerprint": "596c90cc8fbaec5c",
+  "tests": {
+    "command": "python -m pytest tests/unit tests/scientific -p no:cacheprovider --tb=short -q",
+    "passed": 659,
+    "failed": 0,
+    "warnings": 1,
+    "seconds": 47.32
+  },
+  "quality_acceptance": "NOT_EVALUATED",
+  "cpu_req_01_03": "NOT_EVALUATED",
+  "gpu_readiness": "v62_gpu_readiness_20261015.json",
+  "cpu_readiness": "v62_cpu_readiness_20261015.json",
+  "direct_detector_smoke": "v62_direct_detector_cpu_smoke_20261015.json",
+  "implementation_report": "V6_2_TRIEN_KHAI.md",
+  "pdf_smoke": {
+    "input": "C:\\kk_2\\OCR_pdf\\inputs\\CSM_Baocaothuongnien_2025.pdf",
+    "selected_pages": [
+      10,
+      11,
+      12
+    ],
+    "profile": "local",
+    "device": "cpu",
+    "source_fingerprint_at_run": "596c90cc8fbaec5c",
+    "matches_final_source": true,
+    "output": "C:\\kk_2\\OCR_pdf\\output\\v62_smoke_final\\CSM_Baocaothuongnien_2025",
+    "artifact_status": "NEEDS_REVIEW",
+    "artifact_errors": [],
+    "validation_warning_count": 31,
+    "timing": {
+      "model_init_seconds": 10.694,
+      "startup_seconds": 10.694,
+      "pages_seconds": 114.876,
+      "document_layout_seconds": 0.009,
+      "export_seconds": 0.421,
+      "document_latency_seconds": 126.077
+    },
+    "purpose": "integration smoke on inherited pipeline; not full V6.2 acceptance"
+  }
+}

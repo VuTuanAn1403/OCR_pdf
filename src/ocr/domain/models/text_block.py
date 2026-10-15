@@ -21,9 +21,37 @@ class TextBlock(ConfidenceModel):
     fallback: bool = False
     fallback_reason: Optional[str] = None
     region_id: Optional[str] = None
+    source_id: Optional[str] = None
+    source_id_method: Optional[str] = None
+    raw_text_sha8: Optional[str] = None
+    evidence_generation: int = 1
+    producer_ref: Optional[str] = None
+    reading_order_index: Optional[int] = None
+    parent_region_id: Optional[str] = None
+    article_group_id: Optional[str] = None
+    column_id: Optional[str] = None
+    role_initial: Optional[str] = None
+    role_final: Optional[str] = None
+    role_source: Optional[str] = None
+    role_status: str = "UNRESOLVED"
+    role_reasons: List[str] = Field(default_factory=list)
+    support_page_ids: List[str] = Field(default_factory=list)
+    template_id: Optional[str] = None
+    visibility: str = "visible"
+    suppression_reason: Optional[str] = None
+    protected_from_furniture: bool = False
+    protection_reason: Optional[str] = None
+    table_candidate_id: Optional[str] = None
+    review_reason_codes: List[str] = Field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
+            **self.model_dump(include={
+                "source_id", "source_id_method", "raw_text_sha8", "evidence_generation", "producer_ref",
+                "reading_order_index", "parent_region_id", "article_group_id", "column_id",
+                "role_initial", "role_final", "role_source", "role_status", "role_reasons",
+                "support_page_ids", "template_id", "visibility", "suppression_reason",
+                "protected_from_furniture", "protection_reason", "table_candidate_id", "review_reason_codes"}),
             "text": self.text,
             "text_raw": self.text_raw if self.text_raw is not None else self.text,
             "text_corrected": self.text,

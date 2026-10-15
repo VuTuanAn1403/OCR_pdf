@@ -27,15 +27,22 @@ from src.ocr.infrastructure.table.financial_checks import (
     table_total_checks,
 )
 from src.ocr.infrastructure.structure.section_tree import (
-    ACCEPT_SCORE, MAX_LEVEL, METHOD, DocStructure, Paragraph, Section, build_structure,
+    ACCEPT_SCORE, MAX_LEVEL, METHOD, DOCUMENT_ROLE_METHOD, DocStructure, Paragraph, Section, build_structure,
 )
 from src.ocr.runtime.atomic_io import atomic_write_text
+from src.ocr.infrastructure.structure.source_identity import valid_bbox
 
 logger = logging.getLogger(__name__)
 
 SCHEMA_EXTRACTION = "extraction-v1"
 SCHEMA_STRUCTURE = "structure-v1"
 SCHEMA_DOCUMENT = "doc-v1"
+
+
+def _schema(doc, name):
+    modern = doc.manifest.get("document_layout", {}).get("method") == "region_tree_graph_v1"
+    return {"extraction-v1": "extraction-v2-layout", "structure-v1": "structure-v2-layout",
+            "doc-v1": "doc-v2-layout"}[name] if modern else name
 REVIEW_QUALITY = 0.75  # same threshold as EvidenceBlock status in ProcessPageUseCase
 _VI_LETTERS = set("ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ")
 LANGUAGE_METHOD = "vi-en-lexical-heuristic-v2"
@@ -88,15 +95,17 @@ def _cell_json(item: Item, cell, device: str) -> Dict[str, Any]:
     # A cell is addressed by its owning extraction table plus row/column.
     # When the recognizer omits a cell box, retain the coarser table box and
     # declare the fallback rather than leaving an untraceable empty source.
-    bbox = cell.bbox if len(cell.bbox) == 4 else item.bbox
+    valid_cell = valid_bbox(cell.bbox)
+    valid_table = valid_bbox(item.bbox)
+    bbox = cell.bbox if valid_cell else (item.bbox if valid_table else [])
     return {"row": cell.row_idx, "col": cell.col_idx, "row_span": cell.row_span, "col_span": cell.col_span,
             "text_raw": cell.text, "text_corrected": cell.text, "correction_source": None,
-            "bbox": [round(v, 2) for v in bbox],
-            "bbox_source": "cell" if len(cell.bbox) == 4 else "table_fallback",
-            "localization": "cell" if len(cell.bbox) == 4 else "coarse",
-            "needs_review": len(cell.bbox) != 4 or cell.confidence is None,
-            "review_reason": "cell_bbox_unavailable" if len(cell.bbox) != 4 else None,
-            "spans": _spans([(item.page, item.id, bbox)]),
+            "bbox": [round(v, 2) for v in bbox] if bbox else [],
+            "bbox_source": "cell" if valid_cell else "table_fallback",
+            "localization": "cell" if valid_cell else "coarse",
+            "needs_review": not valid_cell or cell.confidence is None,
+            "review_reason": "cell_bbox_unavailable" if not valid_cell else None,
+            "spans": _spans([(item.page, item.id, bbox)]) if bbox else [],
             "source": item.table.engine, "device": device, "confidence": cell.confidence,
             "confidence_source": _confidence_source(cell.confidence, cell.confidence_source)}
 
@@ -151,8 +160,17 @@ def build_extraction_json(doc: ExtractedDocument, items_by_page: Sequence[Sequen
         space, transforms = _coordinate_space(page)
         pages.append({"page": page.page_num, "width": page.width, "height": page.height,
                       "page_type": page.page_type.value, "coordinate_space": space, "transforms": transforms,
-                      "items": [_item_json(item, device) for item in items]})
-    return {"schema_version": SCHEMA_EXTRACTION, "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
+                      **{key: page.metadata.get(key) for key in (
+                          "logical_page_id", "physical_page_id", "ordered_item_ids", "layout_family",
+                          "layout_tree", "article_groups", "order_edges", "layout_review", "text_evidence", "source_dispositions")},
+                      "items": [{**_item_json(item, device),
+                                 **page.metadata.get("source_identity", {}).get("items", {}).get(item.id, {}),
+                                 **page.metadata.get("item_assignments", {}).get(item.id, {}),
+                                 **(item.block.model_dump(include={"role_initial", "role_final", "role_status", "role_reasons",
+                                     "role_source", "visibility", "suppression_reason", "support_page_ids", "template_id",
+                                     "protected_from_furniture", "protection_reason", "table_candidate_id"})
+                                    if item.block is not None else {})} for item in items]})
+    return {"schema_version": _schema(doc, SCHEMA_EXTRACTION), "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
             "pipeline_version": PIPELINE_VERSION, "profile": doc.profile, "total_pages": doc.total_pages,
             "pages": pages}
 
@@ -195,7 +213,8 @@ def build_structure_json(doc: ExtractedDocument, structure: DocStructure) -> Dic
     reasons.update({item_id: "duplicate_formula" for item_id in _duplicate_formula_blocks(structure)})
     dropped = sorted(reasons.items())
     return {
-        "schema_version": SCHEMA_STRUCTURE, "doc_sha16": doc.file_hash, "method": METHOD,
+        "schema_version": _schema(doc, SCHEMA_STRUCTURE), "doc_sha16": doc.file_hash,
+        "method": DOCUMENT_ROLE_METHOD if _schema(doc, SCHEMA_STRUCTURE) != SCHEMA_STRUCTURE else METHOD,
         "params": {"accept_score": ACCEPT_SCORE, "max_level": MAX_LEVEL,
                    "limits": ["no font size on OCR lines: scan headings come from numbering only",
                               "tables are not merged across pages", "no learned text correction"]},
@@ -362,7 +381,7 @@ def build_document_json(doc: ExtractedDocument, structure: DocStructure, device:
         consistency = {"method": FINANCIAL_CHECKS_METHOD, "status": "FAILED",
                        "error": f"{type(exc).__name__}: {exc}"}
     ordered = sorted(sections.values(), key=lambda s: (s["section_id"] != preamble, s["section_id"]))
-    return {"schema_version": SCHEMA_DOCUMENT, "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
+    return {"schema_version": _schema(doc, SCHEMA_DOCUMENT), "doc_id": doc.document_id, "doc_sha16": doc.file_hash,
             "source": {"sha256_16": doc.file_hash, "file_name": Path(doc.file_path).name},
             "extraction": "extraction.json", "sections": ordered, "chunks": chunks,
             "tables": tables, "formulas": formulas, "images": images,
@@ -463,7 +482,14 @@ def _table_chunk(item: Item, section_id: str, device: str) -> Dict[str, Any]:
 def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_mode: str) -> str:
     out: List[str] = []
     duplicates = _duplicate_formula_blocks(structure)
+    diagram_pages = ({p.page_num: p for p in doc.pages if p.diagrams}
+                     if doc is not None and doc.manifest.get("document_layout", {}).get("method") == "region_tree_graph_v1" else {})
+    emitted = set()
     for kind, value in structure.flow:
+        page_number = _flow_page((kind, value))
+        if page_number in diagram_pages and page_number not in emitted:
+            out.extend(MarkdownExporter.render_diagrams(diagram_pages[page_number]))
+            emitted.add(page_number)
         if kind == "item" and value.id in duplicates:
             continue
         if kind == "heading":
@@ -472,6 +498,10 @@ def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_m
                 out.append(f"*{_escape(value.heading.title_en)}*")
         elif kind == "paragraph":
             text = value.text
+            if value.lines and all(line.block_type in ("header", "footer") for line in value.lines):
+                label = "Header" if value.lines[0].block_type == "header" else "Footer"
+                out.append(f"> **{label}**: {_escape(text)}")
+                continue
             if value.kind == "list_item":
                 text = "- " + text.lstrip()[1:].lstrip()
                 out.append(text)
@@ -497,6 +527,8 @@ def render_document_md(doc: ExtractedDocument, structure: DocStructure, assets_m
                 else:
                     tag = "Embedded table image" if region.content_type == ContentType.IMAGE_TABLE else "Embedded image"
                     out.append(f"![{tag}](images/{MarkdownExporter.image_asset_name(item.page, region, assets_mode)})")
+    for number in sorted(set(diagram_pages) - emitted):
+        out.extend(MarkdownExporter.render_diagrams(diagram_pages[number]))
     return "\n\n".join(out).strip() + "\n"
 
 
@@ -524,13 +556,14 @@ def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode:
     items_by_page = document_items(doc)
     JSONExporter.save_json(build_extraction_json(doc, items_by_page, device), doc_dir / "extraction.json")
     try:
-        structure = build_structure(items_by_page)
+        layout_method = doc.manifest.get("document_layout", {}).get("method", "legacy")
+        structure = build_structure(items_by_page) if layout_method == "legacy" else build_structure(items_by_page, layout_method=layout_method)
         structure_json = build_structure_json(doc, structure)
         document_json = build_document_json(doc, structure, device)
         markdown = render_document_md(doc, structure, assets_mode)
     except Exception as exc:  # recorded for validation; see docstring
         logger.exception("Structure step failed for %s", doc.document_id)
-        JSONExporter.save_json({"schema_version": SCHEMA_STRUCTURE, "doc_sha16": doc.file_hash,
+        JSONExporter.save_json({"schema_version": _schema(doc, SCHEMA_STRUCTURE), "doc_sha16": doc.file_hash,
                                 "error": f"{type(exc).__name__}: {exc}"}, doc_dir / "structure.json")
         for stale in ("document.json", "document.md"):
             (doc_dir / stale).unlink(missing_ok=True)

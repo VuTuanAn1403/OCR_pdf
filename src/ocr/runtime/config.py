@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -21,6 +22,23 @@ DEFAULT_CONFIG_PATH = default_profile_path()
 
 class ConfigError(ValueError):
     pass
+
+
+DOCUMENT_LAYOUT_METHODS = ("legacy", "region_tree_graph_v1")
+
+
+def document_layout_settings(config: Dict[str, Any]) -> Dict[str, Any]:
+    """An omitted document pass is legacy, including custom/archived profiles."""
+    value = config.get("document_layout", {"method": "legacy"})
+    if (not isinstance(value, dict) or set(value) - {"method", "min_gap", "furniture"}
+            or value.get("method", "legacy") not in DOCUMENT_LAYOUT_METHODS):
+        raise ConfigError("document_layout accepts method: legacy | region_tree_graph_v1, min_gap and furniture")
+    gap = value.get("min_gap", 3.)
+    if isinstance(gap, bool) or not isinstance(gap, (int, float)) or not math.isfinite(gap) or gap <= 0:
+        raise ConfigError("document_layout.min_gap must be finite and positive")
+    if not isinstance(value.get("furniture", {}), dict):
+        raise ConfigError("document_layout.furniture must be a mapping")
+    return {"method": "legacy", **value}
 
 
 def resolve_config_path(config_path: Optional[str | Path] = None) -> Path:
@@ -54,6 +72,7 @@ def load_profiles(config_path: Optional[str | Path] = None) -> Tuple[Path, Dict[
         if "profile" in profile and profile["profile"] != name:
             raise ConfigError(f"{path}: profile '{name}' declares a different name '{profile['profile']}'")
         profile.setdefault("profile", name)
+        document_layout_settings(profile)
     return path, profiles
 
 

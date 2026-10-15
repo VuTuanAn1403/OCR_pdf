@@ -1,0 +1,7 @@
+# Python 3.11; separate environment from Docling and the V6.1 baseline.
+-r ../../requirements.txt
+torch==2.12.1+cu126
+torchvision==0.27.1+cu126
+onnxruntime-gpu==1.23.2
+transformers==5.19.0
+numpy==1.26.4

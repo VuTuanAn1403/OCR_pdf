@@ -11,9 +11,8 @@ opencv-python-headless>=4.8.0,<=5.0.0.93
 pillow>=10.0.0,<=11.2.0
 numpy>=1.26.0,<=2.4.6
 
-# OCR Engines and ONNX Runtime
-rapidocr-onnxruntime>=1.3.0,<=1.4.4
-onnxruntime>=1.18.0,<=1.29.0
+# Select exactly one runtime via requirements-v62-gpu.txt,
+# requirements-v62-cpu-benchmark.txt or requirements-legacy.txt.
 
 # Deep Learning Recognition (VietOCR Seq2Seq)
 torch>=2.1.0,<=2.14.0

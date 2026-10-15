@@ -1,0 +1,293 @@
+{
+  "date": "2026-10-15",
+  "timezone": "Asia/Bangkok",
+  "purpose": "Deterministic synthetic diagnosis for V6.2 design; not PDF accuracy or GPU acceptance",
+  "source_commit": "568a07a80f801a8f07e2bb2c4bccb08b82d69def",
+  "initial_worktree_changes": [
+    "scripts/export_batch_excel.py",
+    "scripts/run_batch_test_with_monitoring.py"
+  ],
+  "production_pipeline_version": "6.1.0",
+  "model_inference_performed": false,
+  "gpu_benchmark_performed": false,
+  "accuracy_acceptance_status": "NOT_EVALUATED",
+  "column_cases": [
+    {
+      "columns": 3,
+      "rows_per_column": 3,
+      "page_width": 600,
+      "page_height": 842,
+      "generator": "x0=20+c*(560/columns); x1=20+(c+1)*(560/columns)-20; y0=160+r*18; y1=170+r*18",
+      "expected_order": [
+        "C1R1",
+        "C1R2",
+        "C1R3",
+        "C2R1",
+        "C2R2",
+        "C2R3",
+        "C3R1",
+        "C3R2",
+        "C3R3"
+      ],
+      "actual_orders": {
+        "heuristic": [
+          "C2R1",
+          "C1R1",
+          "C3R1",
+          "C2R2",
+          "C1R2",
+          "C3R2",
+          "C2R3",
+          "C1R3",
+          "C3R3"
+        ],
+        "xycut": [
+          "C1R1",
+          "C1R2",
+          "C1R3",
+          "C2R1",
+          "C2R2",
+          "C2R3",
+          "C3R1",
+          "C3R2",
+          "C3R3"
+        ]
+      },
+      "matches_expected": {
+        "heuristic": false,
+        "xycut": true
+      }
+    },
+    {
+      "columns": 4,
+      "rows_per_column": 3,
+      "page_width": 600,
+      "page_height": 842,
+      "generator": "x0=20+c*(560/columns); x1=20+(c+1)*(560/columns)-20; y0=160+r*18; y1=170+r*18",
+      "expected_order": [
+        "C1R1",
+        "C1R2",
+        "C1R3",
+        "C2R1",
+        "C2R2",
+        "C2R3",
+        "C3R1",
+        "C3R2",
+        "C3R3",
+        "C4R1",
+        "C4R2",
+        "C4R3"
+      ],
+      "actual_orders": {
+        "heuristic": [
+          "C1R1",
+          "C2R1",
+          "C1R2",
+          "C2R2",
+          "C1R3",
+          "C2R3",
+          "C3R1",
+          "C4R1",
+          "C3R2",
+          "C4R2",
+          "C3R3",
+          "C4R3"
+        ],
+        "xycut": [
+          "C1R1",
+          "C1R2",
+          "C1R3",
+          "C2R1",
+          "C2R2",
+          "C2R3",
+          "C3R1",
+          "C3R2",
+          "C3R3",
+          "C4R1",
+          "C4R2",
+          "C4R3"
+        ]
+      },
+      "matches_expected": {
+        "heuristic": false,
+        "xycut": true
+      }
+    },
+    {
+      "columns": 5,
+      "rows_per_column": 3,
+      "page_width": 600,
+      "page_height": 842,
+      "generator": "x0=20+c*(560/columns); x1=20+(c+1)*(560/columns)-20; y0=160+r*18; y1=170+r*18",
+      "expected_order": [
+        "C1R1",
+        "C1R2",
+        "C1R3",
+        "C2R1",
+        "C2R2",
+        "C2R3",
+        "C3R1",
+        "C3R2",
+        "C3R3",
+        "C4R1",
+        "C4R2",
+        "C4R3",
+        "C5R1",
+        "C5R2",
+        "C5R3"
+      ],
+      "actual_orders": {
+        "heuristic": [
+          "C3R1",
+          "C1R1",
+          "C2R1",
+          "C4R1",
+          "C5R1",
+          "C3R2",
+          "C1R2",
+          "C2R2",
+          "C4R2",
+          "C5R2",
+          "C3R3",
+          "C1R3",
+          "C2R3",
+          "C4R3",
+          "C5R3"
+        ],
+        "xycut": [
+          "C1R1",
+          "C1R2",
+          "C1R3",
+          "C2R1",
+          "C2R2",
+          "C2R3",
+          "C3R1",
+          "C3R2",
+          "C3R3",
+          "C4R1",
+          "C4R2",
+          "C4R3",
+          "C5R1",
+          "C5R2",
+          "C5R3"
+        ]
+      },
+      "matches_expected": {
+        "heuristic": false,
+        "xycut": true
+      }
+    },
+    {
+      "columns": 6,
+      "rows_per_column": 3,
+      "page_width": 600,
+      "page_height": 842,
+      "generator": "x0=20+c*(560/columns); x1=20+(c+1)*(560/columns)-20; y0=160+r*18; y1=170+r*18",
+      "expected_order": [
+        "C1R1",
+        "C1R2",
+        "C1R3",
+        "C2R1",
+        "C2R2",
+        "C2R3",
+        "C3R1",
+        "C3R2",
+        "C3R3",
+        "C4R1",
+        "C4R2",
+        "C4R3",
+        "C5R1",
+        "C5R2",
+        "C5R3",
+        "C6R1",
+        "C6R2",
+        "C6R3"
+      ],
+      "actual_orders": {
+        "heuristic": [
+          "C1R1",
+          "C2R1",
+          "C3R1",
+          "C1R2",
+          "C2R2",
+          "C3R2",
+          "C1R3",
+          "C2R3",
+          "C3R3",
+          "C4R1",
+          "C5R1",
+          "C6R1",
+          "C4R2",
+          "C5R2",
+          "C6R2",
+          "C4R3",
+          "C5R3",
+          "C6R3"
+        ],
+        "xycut": [
+          "C1R1",
+          "C1R2",
+          "C1R3",
+          "C2R1",
+          "C2R2",
+          "C2R3",
+          "C3R1",
+          "C3R2",
+          "C3R3",
+          "C4R1",
+          "C4R2",
+          "C4R3",
+          "C5R1",
+          "C5R2",
+          "C5R3",
+          "C6R1",
+          "C6R2",
+          "C6R3"
+        ]
+      },
+      "matches_expected": {
+        "heuristic": false,
+        "xycut": true
+      }
+    }
+  ],
+  "header_cases": [
+    {
+      "case": "body_heading_near_top",
+      "page_width": 595,
+      "page_height": 842,
+      "page": 2,
+      "text": "TỔNG QUAN DOANH NGHIỆP",
+      "bbox": [
+        40,
+        20,
+        500,
+        40
+      ],
+      "initial_block_type": "paragraph",
+      "expected_synthetic_role": "section_header",
+      "actual_block_type": "header"
+    },
+    {
+      "case": "header_below_10pct",
+      "page_width": 595,
+      "page_height": 842,
+      "page": 2,
+      "text": "BÁO CÁO THƯỜNG NIÊN",
+      "bbox": [
+        40,
+        95,
+        500,
+        108
+      ],
+      "initial_block_type": "paragraph",
+      "expected_synthetic_role": "header",
+      "actual_block_type": "paragraph"
+    }
+  ],
+  "limitations": [
+    "Only regular synthetic column grids are probed.",
+    "Expected header roles are labels defined for synthetic cases, not human ground truth on actual PDFs.",
+    "XY-cut passing these cases does not demonstrate correctness for tables, key-value forms or complex real-world layouts."
+  ]
+}

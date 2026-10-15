@@ -181,7 +181,8 @@ def test_pipeline_retains_paired_ocr_evidence_before_table_blocks_are_removed(tm
     from src.ocr.application.convert_document import ConvertDocumentUseCase
     from src.ocr.runtime.config import load_profiles
     _, profiles = load_profiles()
-    profiles["fast"].update(retain_table_ocr_lines=True, orientation_fallback_enabled=False)
+    profiles["fast"].update(retain_table_ocr_lines=True, orientation_fallback_enabled=False,
+                            document_layout={"method": "region_tree_graph_v1"})
     profiles["fast"]["docling"] = {"enabled": True, "tables": True, "formulas": False, "page_selection": "all"}
     config = tmp_path / "profiles.yaml"
     config.write_text(yaml.safe_dump({"profiles": profiles}))
@@ -206,7 +207,11 @@ def test_pipeline_retains_paired_ocr_evidence_before_table_blocks_are_removed(tm
         str(_scan(tmp_path / "paired.pdf")), "fast", output_dir=str(tmp_path / "out"),
         cache_dir=str(tmp_path / "cache"), assets_mode="none")
     page = result.pages[0]
-    assert page.tables and not page.blocks
+    # The deliberately incomplete table omits words/numbers from every OCR
+    # line. V6.2 restores those sources instead of treating geometry as proof.
+    assert page.tables and len(page.blocks) == len(LINES)
+    assert {b.text for b in page.blocks} == {line["text"] for line in LINES}
+    assert all("TABLE_SOURCE_UNMAPPED" in b.review_reason_codes for b in page.blocks)
     evidence = page.metadata["table_ocr_evidence"]
     assert evidence["method"] == "post-fallback-pre-table-v1"
     assert [line["text"] for line in evidence["lines"]] == [line["text"] for line in LINES]

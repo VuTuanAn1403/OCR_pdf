@@ -1,0 +1,51 @@
+{
+  "schema_version": "v62-readiness-v1",
+  "run_purpose": "cpu_acceptance_benchmark",
+  "status": "NOT_READY",
+  "parent_cuda_initialized": false,
+  "environments": {
+    "main": {
+      "device": "cpu",
+      "packages": {
+        "onnxruntime": "1.29.0",
+        "rapidocr-onnxruntime": "1.4.4",
+        "torch": "2.12.1+cu126"
+      },
+      "errors": [
+        "V6.2 rejects rapidocr-onnxruntime; use a separate clean GPU/CPU-benchmark environment"
+      ],
+      "available_providers": [
+        "AzureExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "torch_actual_device": "cpu",
+      "torch_smoke_value": 16.0,
+      "python": "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+      "status": "FAILED",
+      "model_inference": "NOT_EVALUATED",
+      "operator_placement": "NOT_EVALUATED"
+    },
+    "docling": {
+      "device": "cpu",
+      "packages": {
+        "torch": "2.14.1+cpu",
+        "docling-slim": "2.137.0"
+      },
+      "errors": [],
+      "torch_actual_device": "cpu",
+      "torch_smoke_value": 16.0,
+      "python": "C:\\kk_2\\OCR_pdf\\.venv-docling\\Scripts\\python.exe",
+      "status": "CAPABILITY_ONLY",
+      "model_inference": "NOT_EVALUATED",
+      "operator_placement": "NOT_EVALUATED"
+    }
+  },
+  "release_gates": {
+    "selected_layout_model": "NOT_EVALUATED",
+    "selected_text_detector": "NOT_EVALUATED",
+    "full_pipeline_gpu_placement": "NOT_EVALUATED",
+    "small_gpu_document_two_phase": "NOT_EVALUATED",
+    "gt_header_footer_reading_order": "NOT_EVALUATED",
+    "cpu_req_01_03": "NOT_EVALUATED"
+  }
+}

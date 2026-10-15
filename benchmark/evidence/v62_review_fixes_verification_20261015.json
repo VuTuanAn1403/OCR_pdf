@@ -1,0 +1,69 @@
+{
+  "schema_version": "v62-review-fixes-verification-v1",
+  "date": "2026-10-15",
+  "timezone": "Asia/Bangkok",
+  "pipeline_version": "6.2.0.dev1",
+  "source_fingerprint": "eabafa700f4b4e31",
+  "status": "REGRESSION_CHECKS_PASSED",
+  "tests": {
+    "command": "python -m pytest tests/unit tests/scientific -p no:cacheprovider --tb=short -q",
+    "passed": 692,
+    "failed": 0,
+    "warnings": 1,
+    "seconds": 49.86,
+    "review_regression_file": "tests/unit/test_v62_review_fixes.py",
+    "review_regression_cases": 33,
+    "docling_worker_in_formula_tests": "simulated; real structure replacement and exporters exercised"
+  },
+  "default_document_layout": "legacy",
+  "opt_in_document_layout": "region_tree_graph_v1",
+  "opt_in_schemas": [
+    "extraction-v2-layout",
+    "structure-v2-layout",
+    "doc-v2-layout",
+    "output-v6.2-layout"
+  ],
+  "fixed_review_items": [
+    "formula source ownership without duplicate Markdown",
+    "explicit profile switch and distinct schema/version",
+    "borderless financial tables read by row",
+    "repeated styled section title keeps first occurrence",
+    "specific review reasons and balanced whitespace splits",
+    "canonical Roman pagination including DLA and invalid model labels",
+    "Mermaid retained with shared flow"
+  ],
+  "csm_evidence_replay": {
+    "schema_version": "v62-review-fixes-replay-v1",
+    "source_fingerprint": "eabafa700f4b4e31",
+    "source": "output\\v62_smoke_final\\CSM_Baocaothuongnien_2025\\result.json",
+    "pages": [
+      10,
+      11,
+      12
+    ],
+    "evidence_replay_only": true,
+    "new_ocr_inference": false,
+    "quality_acceptance": "NOT_EVALUATED",
+    "before": {
+      "review_blocks": 35,
+      "blocks": 152,
+      "layout_reasons": {
+        "AMBIGUOUS_ARTICLE_GROUP": 9
+      },
+      "validator_warnings_at_original_run": 31
+    },
+    "after": {
+      "review_blocks": 0,
+      "blocks": 152,
+      "layout_reasons": {},
+      "validator_status": "NEEDS_REVIEW",
+      "validator_warnings": 9,
+      "validator_errors": []
+    },
+    "output": "output\\v62_review_fixes_replay\\CSM_Baocaothuongnien_2025"
+  },
+  "gpu_acceptance": "NOT_EVALUATED",
+  "accuracy_acceptance": "NOT_EVALUATED",
+  "implementation_report": "V6_2_TRIEN_KHAI.md",
+  "specification": "V6_2_CAI_TIEN_GPU_LAYOUT.md"
+}

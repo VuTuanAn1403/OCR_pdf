@@ -1,0 +1,850 @@
+{
+  "schema_version": "v62-gpu-smoke-v1",
+  "purpose": "backend/process integration, not quality acceptance",
+  "pipeline_version": "6.2.0.dev2",
+  "source_fingerprint": "a79743589e2674f4",
+  "scheduler": {
+    "schema_version": "document-two-phase-v1",
+    "generation": "c537d30f0a4a8a8d9b82c48cf701b963ad4ed6ccfd9d89ac08c9f126fccbd6e3",
+    "status": "COMPLETED",
+    "parent_pid": 22800,
+    "parent_imported_torch": false,
+    "device": "cuda",
+    "initial_vram": {
+      "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+      "total_mib": 4096,
+      "used_mib": 0
+    },
+    "events": [
+      {
+        "phase": "text",
+        "event": "START",
+        "time_ns": 1792073123320714000,
+        "vram": {
+          "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+          "total_mib": 4096,
+          "used_mib": 0
+        }
+      },
+      {
+        "phase": "text",
+        "event": "TREE_EXITED",
+        "time_ns": 1792073179697035800,
+        "vram": {
+          "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+          "total_mib": 4096,
+          "used_mib": 0
+        }
+      },
+      {
+        "phase": "structure",
+        "event": "START",
+        "time_ns": 1792073180453169700,
+        "vram": {
+          "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+          "total_mib": 4096,
+          "used_mib": 0
+        }
+      },
+      {
+        "phase": "structure",
+        "event": "TREE_EXITED",
+        "time_ns": 1792073230157585600,
+        "vram": {
+          "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+          "total_mib": 4096,
+          "used_mib": 0
+        }
+      },
+      {
+        "phase": "export",
+        "event": "START",
+        "time_ns": 1792073230800333200,
+        "vram": {
+          "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+          "total_mib": 4096,
+          "used_mib": 0
+        }
+      },
+      {
+        "phase": "export",
+        "event": "TREE_EXITED",
+        "time_ns": 1792073235152663400,
+        "vram": {
+          "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+          "total_mib": 4096,
+          "used_mib": 0
+        }
+      }
+    ],
+    "phases": {
+      "text": {
+        "pid": 30136,
+        "descendants": [
+          25584,
+          31872
+        ],
+        "seconds": 56.14,
+        "tree_exited": true,
+        "log_path": "C:\\kk_2\\OCR_pdf\\.cache\\v62-jobs\\c537d30f0a4a8a8d9b82c48cf701b963ad4ed6ccfd9d89ac08c9f126fccbd6e3\\text.log",
+        "samples": [
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 87
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 287
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 403
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 937
+          },
+          {
+            "pid": 30136,
+            "tree": [
+              25584,
+              30136,
+              31872
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 209
+          }
+        ]
+      },
+      "structure": {
+        "pid": 24852,
+        "descendants": [
+          1008,
+          9136,
+          16024,
+          24308,
+          31088
+        ],
+        "seconds": 49.61,
+        "tree_exited": true,
+        "log_path": "C:\\kk_2\\OCR_pdf\\.cache\\v62-jobs\\c537d30f0a4a8a8d9b82c48cf701b963ad4ed6ccfd9d89ac08c9f126fccbd6e3\\structure.log",
+        "samples": [
+          {
+            "pid": 24852,
+            "tree": [
+              16024,
+              24852
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              16024,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              16024,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 869
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 1071
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 1071
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 1165
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 1177
+          },
+          {
+            "pid": 24852,
+            "tree": [
+              1008,
+              9136,
+              16024,
+              24308,
+              24852,
+              31088
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 1245
+          }
+        ]
+      },
+      "export": {
+        "pid": 27348,
+        "descendants": [
+          11052,
+          31884
+        ],
+        "seconds": 4.282,
+        "tree_exited": true,
+        "log_path": "C:\\kk_2\\OCR_pdf\\.cache\\v62-jobs\\c537d30f0a4a8a8d9b82c48cf701b963ad4ed6ccfd9d89ac08c9f126fccbd6e3\\export.log",
+        "samples": [
+          {
+            "pid": 27348,
+            "tree": [
+              11052,
+              27348
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          },
+          {
+            "pid": 27348,
+            "tree": [
+              11052,
+              27348,
+              31884
+            ],
+            "device": "GPU-408561af-778b-1ad2-2310-e87b03e0be04",
+            "total_mib": 4096,
+            "used_mib": 0
+          }
+        ]
+      }
+    }
+  },
+  "runtime": {
+    "method": "document-two-phase-v1",
+    "generation": "c537d30f0a4a8a8d9b82c48cf701b963ad4ed6ccfd9d89ac08c9f126fccbd6e3",
+    "model_locks": {
+      "C:\\kk_2\\OCR_pdf\\models\\v62\\ch_PP-OCRv4_det_infer.onnx": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+      "C:\\kk_2\\OCR_pdf\\models\\vietocr\\base.yml": "42511ad7fc72b4e69c8583e78046c6e41c83f3c2ad8eb85a942532acfca9d94a",
+      "C:\\kk_2\\OCR_pdf\\models\\vietocr\\vgg-seq2seq.yml": "1aaae4bbd7601ce465ffb7894c0f570cbf687d2d97979e054e2cbb40edd97a9a",
+      "C:\\kk_2\\OCR_pdf\\models\\vietocr\\vgg_seq2seq.pth": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8\\.gitattributes": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8\\config.json": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8\\docling_heron_400.png": "e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8\\model.safetensors": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8\\preprocessor_config.json": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8\\README.md": "175700839bc7808eac6af1d0c23e4f483606ab2276fe01122f4093e61a1a65b6",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\refs\\main": "8084bbc31e333903f4bd839da812667ebd7dca0e27f6a193e372828ae11aabe5",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\.gitattributes": "360aba3ff7ce75396f13f0a77925fe9e79997e8d4bac064595ebb00c82700386",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\.gitignore": "b44b404189eaff3631c470946e7350c2e88cead304d332a8ad50325e6f56e95d",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\config.json": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\README.md": "d17f233378eff1240b623b36da76ee8b40afcca05d505949713bf03f7e00822a",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\model_artifacts\\tableformer\\accurate\\tableformer_accurate.safetensors": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\model_artifacts\\tableformer\\accurate\\tm_config.json": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\model_artifacts\\tableformer\\fast\\tableformer_fast.safetensors": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\snapshots\\fc0f2d45e2218ea24bce5045f58a389aed16dc23\\model_artifacts\\tableformer\\fast\\tm_config.json": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--docling-models\\refs\\v2.3.0": "7eb53216902c7f3103528631e03d9f64f235d52b4ba8e59f662617ccd5cba0c4",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\.gitattributes": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\added_tokens.json": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\chat_template.json": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\config.json": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\generation_config.json": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\model.safetensors": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\preprocessor_config.json": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\processor_config.json": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\README.md": "684604c08aa8cc32b3d65049bc9794b57f3fc510953148ad3ba61d35f60bef9a",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\special_tokens_map.json": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\tokenizer.json": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\tokenizer_config.json": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\snapshots\\ecedbe111d15c2dc60bfd4a823cbe80127b58af4\\vocab.json": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+      "C:\\kk_2\\OCR_pdf\\models\\docling\\huggingface\\hub\\models--docling-project--CodeFormulaV2\\refs\\main": "b08c95847202b4734e6da618a5a559b06eff263d93bd47117f18478e6e59b6b5",
+      "C:\\kk_2\\OCR_pdf\\models\\v62\\runtime-models.json": "2ca219434b9a058f45db1af84c4257ab3b2b003dd2cb897399e85fca86a63d0f"
+    },
+    "dependency_locks": {
+      "C:\\kk_2\\OCR_pdf\\requirements\\v62\\windows-text-gpu.lock": "7116713b2f8ddbf0f1f800e84880752fe928de4e17420f8abec018bd88c19be0",
+      "C:\\kk_2\\OCR_pdf\\requirements\\v62\\windows-docling-gpu.lock": "89af79a219b8d4501fa901174651011ae66675d04e9679e4cc4f8ce6aae8d537"
+    },
+    "phase_a_placement": {
+      "detector": {
+        "status": "VERIFIED_INFERENCE",
+        "expected_provider": "CUDAExecutionProvider",
+        "kernel_counts": {
+          "CUDAExecutionProvider": 328
+        },
+        "cpu_auxiliary_ops": [],
+        "profile_path": "C:\\kk_2\\OCR_pdf\\.cache\\backend-probes\\detector_2026-10-15_21-05-31.json",
+        "model_sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9"
+      },
+      "recognizer": {
+        "status": "VERIFIED_INFERENCE",
+        "device": "cuda",
+        "forward_calls": {
+          "vietocr": 1030
+        },
+        "not_exercised": [],
+        "workload": "document"
+      },
+      "layout": {
+        "status": "VERIFIED_INFERENCE",
+        "backend": "torch-rtdetr-v2",
+        "parameter_devices": [
+          "cuda"
+        ],
+        "output_device": "cuda:0"
+      }
+    },
+    "phase_b_placement": [
+      {
+        "status": "VERIFIED_INFERENCE",
+        "device": "cuda",
+        "forward_calls": {
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').layout_model.engine._model": 267,
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').table_model.tf_predictor._model": 556
+        },
+        "not_exercised": [
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').enrichment_pipe.0.engine.actual_engine.vlm_model"
+        ]
+      },
+      {
+        "status": "VERIFIED_INFERENCE",
+        "device": "cuda",
+        "forward_calls": {
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').layout_model.engine._model": 534,
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').table_model.tf_predictor._model": 1112
+        },
+        "not_exercised": [
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').enrichment_pipe.0.engine.actual_engine.vlm_model"
+        ]
+      },
+      {
+        "status": "VERIFIED_INFERENCE",
+        "device": "cuda",
+        "forward_calls": {
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').layout_model.engine._model": 801,
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').table_model.tf_predictor._model": 1112,
+          "docling.(<class 'docling.pipeline.standard_pdf_pipeline.StandardPdfPipeline'>, '97a6eed96c86fde8692a681032e3431e').enrichment_pipe.0.engine.actual_engine.vlm_model": 9109
+        },
+        "not_exercised": []
+      }
+    ],
+    "quality_acceptance": "NOT_EVALUATED"
+  },
+  "validation": {
+    "status": "NEEDS_REVIEW",
+    "counts": {
+      "formulas_json": 1,
+      "pages_json": 3,
+      "pages_markdown": 3,
+      "tables_json": 2,
+      "pipe_tables_markdown": 2,
+      "table_candidates_as_paragraphs": 0,
+      "image_links": 3,
+      "broken_image_links": 0,
+      "evidence_blocks": 5,
+      "review_required_lines": 3,
+      "large_unread_image_regions": 0,
+      "ground_truth_cases": 0,
+      "output_contract_policy": "v6",
+      "structure_sections": 1,
+      "structure_chunks": 8,
+      "cells_with_coarse_bbox": 0
+    },
+    "errors": [],
+    "warnings": [
+      "Page 1: source 554d504c1d1b73d4:p0001:b000008 TABLE_SOURCE_UNMAPPED requires review",
+      "Page 1: table p1_docling_table_1 requires independent review",
+      "Page 1: region p1_dla_2 orientation unknown",
+      "Page 1: region p1_docling_table_8 needs review: Model output has no calibrated confidence or independent verification",
+      "Page 1: region p1_restored_b000008 needs review: Source text not faithfully represented by table cells",
+      "Page 2: region p2_dla_2 orientation unknown",
+      "Page 3: formula p3_docling_formula_1 requires independent review",
+      "Page 3: region p3_r2 orientation unknown",
+      "Page 3: region p3_dla_1 orientation unknown",
+      "Page 3: region p3_dla_2 orientation unknown",
+      "Page 3: region p3_dla_3 orientation unknown",
+      "Page 3: region p3_dla_4 orientation unknown",
+      "Page 3: region p3_dla_5 orientation unknown",
+      "Page 3: region p3_dla_6 orientation unknown",
+      "Page 3: region p3_docling_formula_8 needs review: Model output has no calibrated confidence or independent verification",
+      "3 document chunks need review",
+      "3 OCR lines require review"
+    ]
+  },
+  "quality_acceptance": "NOT_EVALUATED",
+  "gpu_soak_300_pages": "NOT_EVALUATED"
+}

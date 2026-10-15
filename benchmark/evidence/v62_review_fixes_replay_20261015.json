@@ -1,0 +1,30 @@
+{
+  "schema_version": "v62-review-fixes-replay-v1",
+  "source_fingerprint": "eabafa700f4b4e31",
+  "source": "output\\v62_smoke_final\\CSM_Baocaothuongnien_2025\\result.json",
+  "pages": [
+    10,
+    11,
+    12
+  ],
+  "evidence_replay_only": true,
+  "new_ocr_inference": false,
+  "quality_acceptance": "NOT_EVALUATED",
+  "before": {
+    "review_blocks": 35,
+    "blocks": 152,
+    "layout_reasons": {
+      "AMBIGUOUS_ARTICLE_GROUP": 9
+    },
+    "validator_warnings_at_original_run": 31
+  },
+  "after": {
+    "review_blocks": 0,
+    "blocks": 152,
+    "layout_reasons": {},
+    "validator_status": "NEEDS_REVIEW",
+    "validator_warnings": 9,
+    "validator_errors": []
+  },
+  "output": "output\\v62_review_fixes_replay\\CSM_Baocaothuongnien_2025"
+}

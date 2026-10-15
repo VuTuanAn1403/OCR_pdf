@@ -104,6 +104,7 @@ class BatchOCRRunner:
         batch_size: Optional[int] = None,
         hardware_profile: Optional[Dict[str, Any]] = None,
         output_mode: str = "legacy",
+        keywords_file: Optional[str] = None,
     ):
         self.input_dir = Path(input_dir).resolve()
         self.output_dir = Path(output_dir).resolve()
@@ -117,6 +118,10 @@ class BatchOCRRunner:
         if output_mode not in OUTPUT_MODES:
             raise ValueError(f"Unknown output_mode {output_mode!r}")
         self.output_mode = output_mode
+        from src.ocr.application.count_keywords import CountKeywordsUseCase
+        from src.ocr.infrastructure.postprocessing.keyword_counter import KeywordCounter
+        self.keywords_file = str(CountKeywordsUseCase.resolve_keywords_file(keywords_file))
+        KeywordCounter.load_keywords(self.keywords_file)
         self.cache_dir = cache_dir
         # (index, count): this worker takes every count-th file (ENV-08).
         self.shard = shard
@@ -310,6 +315,9 @@ class BatchOCRRunner:
                 with open(acc_file, "r", encoding="utf-8") as f:
                     acc = json.load(f)
 
+            # Refresh this inexpensive report even when OCR artifacts are reused.
+            from src.ocr.application.count_keywords import CountKeywordsUseCase
+            CountKeywordsUseCase.execute(doc_dir, doc_id, getattr(self, "keywords_file", None))
             return {
                 "benchmark": bm,
                 "quality": ql,
@@ -538,6 +546,7 @@ class BatchOCRRunner:
                         device=self.device,
                         assets_mode=self.assets_mode,
                         output_mode=self.output_mode,
+                        keywords_file=self.keywords_file,
                         cache_dir=self.cache_dir,
                     )
                     recorder.add_document(doc)
@@ -647,6 +656,7 @@ class BatchOCRRunner:
                "output_dir": str(self.output_dir), "cache_dir": self.cache_dir, "resume": not self.force,
                "assets_mode": self.assets_mode, "ground_truth_dir": str(self.ground_truth_dir),
                "output_mode": self.output_mode,
+               "keywords_file": self.keywords_file,
                "accuracy_report": bool(ground_truth_pages(self.ground_truth_dir, entry["document_id"])),
                "source_fingerprint": self._batch_source_fingerprint, "config_hash": config_hash(self.profile_config),
                "pdf_sha16": ArtifactCache.compute_file_hash(entry["absolute_path"])}
@@ -729,10 +739,29 @@ class BatchOCRRunner:
                         pass
 
             collected_region_ids = set()
+            layout_review_counts = {p.get("page_num"): p.get("metadata", {}).get("document_layout_review_count", 0)
+                                    for p in pages_data}
 
             # 2. Extract risk signals from individual regions (e.g. numeric disagreement, orientation conflict)
             for p_dict in pages_data:
                 p_num = p_dict.get("page_num", 1)
+                layout_signals = [(reason.get("code", "LAYOUT_UNCERTAIN"), reason.get("region_id"),
+                                   reason.get("item_ids", []), None)
+                                  for reason in p_dict.get("metadata", {}).get("layout_review", [])]
+                for block in p_dict.get("blocks", []):
+                    codes = block.get("review_reason_codes", [])
+                    if block.get("role_status") == "NEEDS_REVIEW" and not codes:
+                        codes = ["FURNITURE_ROLE_UNCERTAIN"]
+                    for code in codes:
+                        layout_signals.append((code, block.get("parent_region_id"),
+                                               [block.get("source_id")], block.get("text")))
+                for reason, region_id, source_ids, snippet in layout_signals:
+                    q_key = (file_name, p_num, region_id, reason)
+                    if q_key not in seen_queue_keys:
+                        seen_queue_keys.add(q_key)
+                        review_queue.append({"priority": "REVIEW", "file": file_name, "page": p_num,
+                            "region_id": region_id, "reason": reason, "affected_lines": len(source_ids),
+                            "source_ids": source_ids, "snippet": snippet})
 
                 for reg in p_dict.get("regions", []):
                     r_id = reg.get("region_id")
@@ -839,7 +868,7 @@ class BatchOCRRunner:
                                 review_queue.append(item)
 
                         # If low confidence OCR blocks were reported and no region item was collected
-                        req_count = pr.get("review_required_count", 0)
+                        req_count = max(0, pr.get("review_required_count", 0) - layout_review_counts.get(p_num, 0))
                         if req_count > 0 and not any(p == p_num for p, _ in collected_region_ids):
                             reason_str = "low_confidence_ocr_blocks"
                             item = {
@@ -1106,6 +1135,8 @@ def main():
     parser.add_argument("--excel", default=None, help="Excel output path (default: OCR_BENCHMARK_5_FILES.xlsx in --output)")
     parser.add_argument("--force", action="store_true", help="Force rerun without cache")
     parser.add_argument("--files", nargs="+", default=None, help="Filter specific files to run in batch")
+    parser.add_argument("--keywords-file", default=None,
+                        help="UTF-8 keyword file, one phrase per line (default: config/keywords.txt)")
     parser.add_argument("--log-format", choices=LOG_FORMATS, default="text",
                         help="text keeps console progress; json writes JSON lines with run/doc/page/stage/worker")
     args = parser.parse_args()
@@ -1130,6 +1161,7 @@ def main():
             excel_path=args.excel or str(Path(args.output) / "OCR_BENCHMARK_5_FILES.xlsx"),
             force=args.force,
             file_list=args.files,
+            keywords_file=args.keywords_file,
             device=args.device or (hardware and hardware.device),
             assets_mode=args.assets,
             output_mode=args.output_mode,
@@ -1143,7 +1175,7 @@ def main():
             batch_size=hardware.batch_size if hardware else None,
             hardware_profile=hardware.record() if hardware else None,
         )
-    except (ConfigError, ValueError, RuntimeError) as exc:
+    except (ConfigError, ValueError, RuntimeError, OSError) as exc:
         parser.error(str(exc))
     runner.execute_batch(limit=args.limit)
 

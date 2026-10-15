@@ -22,11 +22,11 @@ class NativeTextExtractor:
         extracted_blocks: List[TextBlock] = []
         line_idx = 0
 
-        for b in blocks_data:
+        for object_index, b in enumerate(blocks_data):
             if b.get("type") != 0:  # 0 is text, 1 is image
                 continue
 
-            for line in b.get("lines", []):
+            for native_line_index, line in enumerate(b.get("lines", [])):
                 line_bbox = line.get("bbox", [0, 0, 0, 0])
                 line_text_parts = []
                 font_sizes = []
@@ -51,6 +51,7 @@ class NativeTextExtractor:
                 norm_text = UnicodeNormalizer.normalize(full_line_text)
 
                 block = TextBlock(
+                    producer_ref=f"native:p{page_num}:object{object_index}:line{native_line_index}",
                     text=norm_text,
                     text_raw=full_line_raw,
                     correction_source="unicode_normalizer" if norm_text != full_line_raw else None,

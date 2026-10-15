@@ -22,6 +22,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from src.ocr.infrastructure.structure.ids import Item
 
 METHOD = "heuristic-v1"
+DOCUMENT_ROLE_METHOD = "heuristic-v2-document-roles"
 ACCEPT_SCORE = 3.0
 MAX_LEVEL = 4
 # Lower bound of font size / body size for levels 1..3; below is level 4.
@@ -67,6 +68,8 @@ class Line:
     correction_source: Optional[str] = None
     page_height: Optional[float] = None
     structure_needs_review: bool = False
+    column_id: Optional[str] = None
+    article_group_id: Optional[str] = None
 
     @property
     def height(self) -> float:
@@ -205,6 +208,8 @@ def _translation_candidate(line: Line, body: Optional[float] = None) -> bool:
 def rejection_reason(line: Line, previous: Sequence[Line] = ()) -> Optional[str]:
     """Reason a line cannot be a heading, or None. `previous` holds up to two
     preceding lines (a signature block may put a stamp between title and name)."""
+    if len(line.bbox) != 4:
+        return "unplaced"
     text = line.text.strip()
     numbering = parse_numbering(text)
     if _is_bullet(text):
@@ -306,7 +311,7 @@ def _toc_entries(lines: Sequence[Line]) -> List[Tuple[str, int]]:
 
 def _toc_entries_with_sources(lines: Sequence[Line]) -> List[Tuple[str, int, List[str]]]:
     entries = []
-    numbers = [line for line in lines if re.fullmatch(r"\d{1,3}", line.text.strip())]
+    numbers = [line for line in lines if len(line.bbox) == 4 and re.fullmatch(r"\d{1,3}", line.text.strip())]
     for line in lines:
         text = line.text.strip()
         if line in numbers:
@@ -315,7 +320,7 @@ def _toc_entries_with_sources(lines: Sequence[Line]) -> List[Tuple[str, int, Lis
         if match and len(_letters(match.group(1))) >= 3:
             entries.append((normalize_title(match.group(1)), int(match.group(2)), [line.item_id]))
             continue
-        if len(_letters(text)) < 3:
+        if len(_letters(text)) < 3 or len(line.bbox) != 4:
             continue
         mid = (line.bbox[1] + line.bbox[3]) / 2
         same_row = [n for n in numbers if n.bbox[0] >= line.bbox[2] - 1
@@ -365,12 +370,16 @@ def _same_style(a: Line, b: Line) -> bool:
 
 
 def _aligned(a: Line, b: Line) -> bool:
+    if len(a.bbox) != 4 or len(b.bbox) != 4:
+        return False
     left = abs(a.bbox[0] - b.bbox[0]) <= 6
     centered = abs((a.bbox[0] + a.bbox[2]) / 2 - (b.bbox[0] + b.bbox[2]) / 2) <= 8
     return left or centered
 
 
 def _adjacent(a: Line, b: Line) -> bool:
+    if len(a.bbox) != 4 or len(b.bbox) != 4:
+        return False
     # Tight heading leading makes consecutive line boxes overlap (negative gap).
     return a.page == b.page and -0.5 * a.height <= b.bbox[1] - a.bbox[3] <= 0.8 * a.height
 
@@ -465,6 +474,10 @@ def _is_bullet(text: str) -> bool:
 
 
 def _starts_new_paragraph(previous: Line, line: Line) -> bool:
+    if len(previous.bbox) != 4 or len(line.bbox) != 4:
+        return True
+    if (previous.column_id != line.column_id or previous.article_group_id != line.article_group_id):
+        return True
     if line.page not in (previous.page, previous.page + 1):
         # Selected-page extraction may omit intervening pages. Their text is
         # unknown; joining across that gap would invent a continuous sentence.
@@ -506,12 +519,13 @@ def _join(lines: Sequence[Line]) -> str:
 
 def _line(item: Item, needs_review: bool = False) -> Line:
     block = item.block
-    return Line(item_id=item.id, page=item.page, text=block.text, bbox=item.bbox or [0, 0, 0, 0],
+    return Line(item_id=item.id, page=item.page, text=block.text, bbox=item.bbox,
                 font_size=block.font_size, is_bold=bool(block.is_bold), block_type=block.block_type,
                 source=block.source, confidence=block.confidence, quality_score=block.quality_score,
                 confidence_source=block.confidence_source, text_raw=getattr(block, "text_raw", None),
                 correction_source=getattr(block, "correction_source", None), page_height=item.page_height,
-                structure_needs_review=needs_review)
+                structure_needs_review=needs_review or len(item.bbox) != 4 or bool(block.review_reason_codes), column_id=block.column_id,
+                article_group_id=block.article_group_id)
 
 
 def _overlapping_tables(item: Item, tables: Sequence[Item]) -> List[Item]:
@@ -541,7 +555,7 @@ def _inside_table(item: Item, tables: Sequence[Item]) -> bool:
     return False
 
 
-def build_structure(items_by_page: Sequence[Sequence[Item]]) -> DocStructure:
+def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: str = "legacy") -> DocStructure:
     dropped: Dict[str, str] = {}
     # 1. Body text lines in reading order; everything else stays an item.
     sequence: List[Tuple[str, object]] = []
@@ -552,7 +566,8 @@ def build_structure(items_by_page: Sequence[Sequence[Item]]) -> DocStructure:
                 sequence.append(("item", item))
                 continue
             block = item.block
-            if block.block_type in ("header", "footer", "running_header", "running_footer", "page_number"):
+            peripheral = ("header", "footer", "running_header", "running_footer", "page_number") if layout_method == "legacy" else ("running_header", "running_footer", "page_number")
+            if block.block_type in peripheral:
                 dropped[item.id] = block.block_type
             elif not block.text.strip():
                 dropped[item.id] = "empty"
@@ -611,7 +626,8 @@ def build_structure(items_by_page: Sequence[Sequence[Item]]) -> DocStructure:
         accepted = sorted(accepted + [(p, h) for p, h in near_misses if id(h) in promoted], key=lambda pair: pair[0])
     headings = merge_headings(accepted)
     _attach_translations(headings, sequence, reference)
-    headings = _drop_repeated_titles(headings, dropped)
+    if layout_method == "legacy":
+        headings = _drop_repeated_titles(headings, dropped)
     assign_levels(headings)
 
     # 3. Sections with parents, and the reading-order flow with paragraphs.

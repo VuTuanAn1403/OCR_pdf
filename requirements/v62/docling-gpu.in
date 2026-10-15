@@ -1,0 +1,5 @@
+docling-slim[convert-core,format-pdf,models-local,models-vlm-inline]==2.137.0
+torch==2.12.1+cu126
+torchvision==0.27.1+cu126
+numpy==2.4.6
+opencv-python-headless==5.0.0.93

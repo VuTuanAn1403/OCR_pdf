@@ -80,6 +80,8 @@ class MarkdownExporter:
         include_running_headers_footers: bool = False,
         assets_mode: str = "png",
     ) -> str:
+        if "ordered_item_ids" in page.metadata:
+            return cls._export_shared_flow(page, image_prefix, include_running_headers_footers, assets_mode)
         lines: List[str] = [f"# Trang {page.page_num}\n"]
 
         # 1. Separate Header, Footer, and Body blocks
@@ -411,6 +413,37 @@ class MarkdownExporter:
             )
 
         return "\n".join(lines).strip()
+
+    @classmethod
+    def _export_shared_flow(cls, page, image_prefix, include_running, assets_mode):
+        from src.ocr.infrastructure.structure.ids import page_items
+        from src.ocr.infrastructure.structure.section_tree import build_structure
+        from src.ocr.infrastructure.export.document_contracts import render_document_md
+        # Use the exact same items/structure renderer as document.md. No
+        # diagram heuristics, line synthesis or y-based table reinsertion.
+        items = page_items(page.metadata["flow_doc_hash"], page)
+        if include_running:
+            from dataclasses import replace
+            items = [replace(i, block=i.block.model_copy(update={"block_type": i.block.block_type.removeprefix("running_")}))
+                     if i.block is not None and i.block.block_type in ("running_header", "running_footer") else i
+                     for i in items]
+        text = render_document_md(None, build_structure([items], layout_method="region_tree_graph_v1"), assets_mode)
+        if image_prefix != "images":
+            text = text.replace("](images/", f"]({image_prefix}/")
+        diagrams = "\n\n".join(cls.render_diagrams(page))
+        return f"# Trang {page.page_num}\n\n{diagrams}\n\n{text}".strip()
+
+    @staticmethod
+    def render_diagrams(page):
+        """Derived visualizations supplement source text; never replace it."""
+        rendered = []
+        for diagram in page.diagrams:
+            mermaid = diagram.to_mermaid()
+            if mermaid:
+                if diagram.title:
+                    rendered.append(f"### {diagram.title}")
+                rendered.append(mermaid)
+        return rendered
 
     @classmethod
     def export_document_markdown(

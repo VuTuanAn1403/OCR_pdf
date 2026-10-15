@@ -9,6 +9,7 @@ import pymupdf
 from src.ocr.domain.models.document import ExtractedDocument
 from src.ocr.infrastructure.export.markdown_exporter import ASSET_MODES, MarkdownExporter
 from src.ocr.infrastructure.export.json_exporter import JSONExporter
+from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 from src.ocr.infrastructure.export.artifact_validator import validate_document_artifacts
 from src.ocr.infrastructure.export.completion import clear_completed
 from src.ocr.infrastructure.export.document_contracts import write_document_contracts
@@ -33,6 +34,8 @@ class ExportDocumentUseCase:
         accuracy_data: Optional[Dict[str, Any]] = None,
         assets_mode: str = "png",
         output_mode: str = "legacy",
+        document_layout: Optional[Dict[str, Any]] = None,
+        keywords_file: Optional[str] = None,
     ) -> Path:
         if assets_mode not in ASSET_MODES:
             raise ValueError(f"Unknown assets_mode '{assets_mode}'. Use one of: {', '.join(ASSET_MODES)}")
@@ -45,6 +48,7 @@ class ExportDocumentUseCase:
         # completion of a partially rewritten output.
         clear_completed(doc_dir)
         doc.manifest["assets_mode"] = assets_mode
+        doc.manifest["pipeline_version"] = PIPELINE_VERSION
         doc.manifest["output_mode"] = output_mode
         doc.manifest["output_contract"] = {
             "schema_version": OUTPUT_CONTRACT_VERSION,
@@ -53,8 +57,33 @@ class ExportDocumentUseCase:
 
         cls._export_image_assets(doc, doc_dir, assets_mode)
 
-        # Detect repeated running headers and footers across pages (Proposal A2)
-        cls._detect_running_headers_and_footers(doc)
+        from src.ocr.runtime.config import document_layout_settings
+        configured = doc.manifest.get("configuration", {})
+        if document_layout is not None:
+            requested_layout = document_layout
+        elif "document_layout" in configured:
+            requested_layout = configured["document_layout"]
+        else:
+            resolved = doc.manifest.get("document_layout", {})
+            requested_layout = resolved.get("settings", {"method": resolved.get("method", "legacy")})
+        settings = document_layout_settings({"document_layout": requested_layout})
+        modern = settings["method"] == "region_tree_graph_v1"
+        if modern and (doc.manifest.get("document_layout", {}).get("method") != settings["method"]
+                       or doc.manifest.get("document_layout", {}).get("settings") != settings):
+            from src.ocr.application.resolve_document_layout import resolve_document_layout
+            resolve_document_layout(doc, settings)
+        if not modern:
+            if any("ordered_item_ids" in p.metadata for p in doc.pages):
+                raise ValueError("Legacy export requires original page evidence; cannot reuse a finalized region-tree document")
+            doc.manifest["document_layout"] = {"method": "legacy", "algorithm_version": "legacy-v6.1"}
+            cls._detect_running_headers_and_footers(doc)
+            # A reused output directory must not advertise stale opt-in sidecars.
+            for name in ("layout_order.json", "furniture.json"):
+                (doc_dir / name).unlink(missing_ok=True)
+        else:
+            doc.manifest["output_contract"]["schema_version"] = "output-v6.2-layout"
+        if modern:
+            cls._export_layout_sidecars(doc, doc_dir)
 
         # 1. Export per-page artifacts (suppress running headers/footers in Markdown by default)
         for p in doc.pages:
@@ -124,7 +153,22 @@ class ExportDocumentUseCase:
             raise ValueError(f"Artifact validation failed: {validation['errors'][:3]}"
                              + (f"; structure step error: {cause}" if cause else ""))
 
+        from src.ocr.application.count_keywords import CountKeywordsUseCase
+        CountKeywordsUseCase.execute(doc_dir, doc.document_id, keywords_file)
         return doc_dir
+
+    @staticmethod
+    def _export_layout_sidecars(doc, doc_dir):
+        JSONExporter.save_json({"schema_version": "layout-order-v1", "pages": [
+            {"page": p.page_num, **{key: p.metadata.get(key) for key in (
+                "logical_page_id", "physical_page_id", "layout_family", "article_groups", "layout_tree",
+                "ordered_item_ids", "ordered_source_ids", "item_assignments", "layout_review", "source_identity")}}
+            for p in doc.pages]}, doc_dir / "layout_order.json")
+        JSONExporter.save_json({"schema_version": "furniture-v1", **doc.manifest.get("furniture", {}),
+            "pages": [{"page": p.page_num, "items": [b.to_dict() for b in p.blocks
+                if b.role_status == "NEEDS_REVIEW" or b.protected_from_furniture or b.role_final in (
+                    "header", "footer", "running_header", "running_footer", "page_number")]} for p in doc.pages]},
+            doc_dir / "furniture.json")
 
     @staticmethod
     def _export_image_assets(doc: ExtractedDocument, doc_dir: Path, assets_mode: str) -> None:
@@ -154,67 +198,9 @@ class ExportDocumentUseCase:
 
     @classmethod
     def _detect_running_headers_and_footers(cls, doc: ExtractedDocument) -> None:
-        """
-        Detects repeated header and footer strings across distinct pages (>= 30% distinct page frequency).
-        Marks matching blocks as running_header or running_footer (Proposal A2 / Review V5 Item 9).
-        Enforces distinct page counting, position verification, and math.ceil rounding.
-        """
-        total_pages = len(doc.pages)
-        if total_pages < 3:
-            return
-
-        import unicodedata
-        import re
-        import math
-        from collections import defaultdict
-
-        def _norm(text: str) -> str:
-            t = unicodedata.normalize("NFC", text.strip().lower())
-            t = re.sub(r"\d+", "", t)
-            t = re.sub(r"[^\w\s]", "", t)
-            # Whitespace-free key: letter-spaced variants such as
-            # "BÁO CÁ O THƯỜNG NIÊN" must match the same running header (H6).
-            return "".join(t.split())
-
-        # Count DISTINCT pages where header or footer appears
-        header_pages: Dict[str, set] = defaultdict(set)
-        footer_pages: Dict[str, set] = defaultdict(set)
-
-        for p in doc.pages:
-            p_h = float(getattr(p, "height", 0) or 0)
-            for b in p.blocks:
-                if b.block_type == "formula":
-                    continue
-                norm_str = _norm(b.text)
-                if not norm_str or len(norm_str) < 4:
-                    continue
-
-                b_ymid = ((b.bbox[1] + b.bbox[3]) / 2.0) if (b.bbox and len(b.bbox) >= 4) else None
-
-                # Position checks: Header within top 15%, Footer within bottom 15%
-                if b.block_type == "header":
-                    if p_h <= 0 or b_ymid is None or b_ymid <= 0.15 * p_h:
-                        header_pages[norm_str].add(p.page_num)
-                elif b.block_type == "footer":
-                    if p_h <= 0 or b_ymid is None or b_ymid >= 0.85 * p_h:
-                        footer_pages[norm_str].add(p.page_num)
-
-        # Threshold using math.ceil(total_pages * 0.30)
-        min_distinct_pages = max(2, math.ceil(total_pages * 0.30))
-        running_headers = {k for k, p_set in header_pages.items() if len(p_set) >= min_distinct_pages}
-        running_footers = {k for k, p_set in footer_pages.items() if len(p_set) >= min_distinct_pages}
-
-        for p in doc.pages:
-            p_h = float(getattr(p, "height", 0) or 0)
-            for b in p.blocks:
-                norm_str = _norm(b.text)
-                b_ymid = ((b.bbox[1] + b.bbox[3]) / 2.0) if (b.bbox and len(b.bbox) >= 4) else None
-                if b.block_type == "header" and norm_str in running_headers:
-                    if p_h <= 0 or b_ymid is None or b_ymid <= 0.15 * p_h:
-                        b.block_type = "running_header"
-                elif b.block_type == "footer" and norm_str in running_footers:
-                    if p_h <= 0 or b_ymid is None or b_ymid >= 0.85 * p_h:
-                        b.block_type = "running_footer"
+        """The legacy exporter retains its frozen V6.1 furniture policy."""
+        from src.ocr.infrastructure.postprocessing.legacy_furniture import resolve_legacy_furniture
+        resolve_legacy_furniture(doc)
 
 
 def _save_crop(page: pymupdf.Page, clip: pymupdf.Rect, path: Path, output: str) -> bool:

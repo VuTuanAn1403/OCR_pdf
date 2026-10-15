@@ -1,7 +1,6 @@
 from typing import List, Dict, Any, Optional
 import numpy as np
 import unicodedata
-from rapidocr_onnxruntime import RapidOCR
 from src.ocr.infrastructure.ocr.primary_engine import BaseOCREngine
 
 class RapidOCREngine(BaseOCREngine):
@@ -10,7 +9,7 @@ class RapidOCREngine(BaseOCREngine):
     Maintains a singleton engine instance to prevent redundant model reloading.
     """
     _instance: Optional["RapidOCREngine"] = None
-    _engine: Optional[RapidOCR] = None
+    _engine: Optional[Any] = None
     _threads: Optional[int] = None
 
     def __new__(cls, *args, **kwargs):
@@ -27,6 +26,7 @@ class RapidOCREngine(BaseOCREngine):
 
     @staticmethod
     def _make_engine(threads):
+        from rapidocr_onnxruntime import RapidOCR
         return RapidOCR(intra_op_num_threads=threads, inter_op_num_threads=1) if threads else RapidOCR()
 
     def predict_image(self, img_bgr: np.ndarray) -> List[Dict[str, Any]]:

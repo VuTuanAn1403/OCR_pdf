@@ -279,13 +279,17 @@ def test_running_header_does_not_suppress_midpage_headings():
         quality=DocumentQualityReport(document_id="doc_header_test", total_pages=3),
         pages=[p1, p2, p3]
     )
+    # Three distinct pages are required in V6.2; retain a separate mid-page
+    # occurrence to verify that it does not inherit the running-header role.
+    p3.blocks.insert(0, p1.blocks[0].model_copy(update={"page": 3}))
     ExportDocumentUseCase._detect_running_headers_and_footers(doc)
 
     # Pages 1 & 2 should be marked as running_header
     assert doc.pages[0].blocks[0].block_type == "running_header"
     assert doc.pages[1].blocks[0].block_type == "running_header"
     # Page 3 mid-page block MUST remain 'header' (NOT 'running_header')
-    assert doc.pages[2].blocks[0].block_type == "header"
+    assert doc.pages[2].blocks[0].block_type == "running_header"
+    assert doc.pages[2].blocks[1].block_type == "header"
 
 
 def test_rapidocr_polygon_direct_unpack(monkeypatch):

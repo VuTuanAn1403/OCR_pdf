@@ -14,8 +14,6 @@ dependencies = [
     "opencv-python-headless>=4.8.0,<=5.0.0.93",
     "pillow>=10.0.0,<=11.2.0",
     "numpy>=1.26.0,<=2.4.6",
-    "rapidocr-onnxruntime>=1.3.0,<=1.4.4",
-    "onnxruntime>=1.18.0,<=1.29.0",
     "torch>=2.1.0,<=2.14.0",
     "torchvision>=0.16.0,<=0.29.0",
     "vietocr==0.3.13",
@@ -31,6 +29,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gpu = ["onnxruntime-gpu==1.23.2"]
+cpu-benchmark = ["onnxruntime>=1.18.0,<=1.29.0"]
+# Compatibility for the existing 6.1 profiles while the model-selection and
+# two-phase release gates are pending. Never combine with the GPU extra.
+legacy = ["rapidocr-onnxruntime>=1.3.0,<=1.4.4", "onnxruntime>=1.18.0,<=1.29.0"]
 test = ["pytest>=8.0.0,<=9.1.1", "apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0", "pycocotools>=2.0.7,<3"]
 research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0", "pycocotools>=2.0.7,<3"]
 
@@ -41,6 +44,7 @@ ocrpdf = "src.ocr.cli.run_ocr:main"
 ocrpdf-batch = "src.ocr.cli.batch_runner:main"
 ocrpdf-perf = "benchmark.perf.run_perf:main"
 ocrpdf-collect = "src.ocr.cli.collect:main"
+ocrpdf-gpu = "src.ocr.cli.gpu_runner:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "src.ocr.infrastructure.export.manifest_exporter.PIPELINE_VERSION" }

@@ -152,7 +152,7 @@ def test_invalid_extraction_fails_even_when_document_is_missing(tmp_path):
     assert any("extraction.json" in message for message in report["errors"])
 
 
-def test_letter_spaced_running_header_is_still_detected():
+def test_letter_spaced_running_header_is_still_detected_in_legacy_mode():
     pages = []
     for page_num, text in ((1, "BÁO CÁO THƯỜNG NIÊN 2025"), (2, "BÁO CÁ O THƯỜNG NIÊN 2025"),
                            (3, "BÁO CÁO THƯỜNG NIÊN 2025")):

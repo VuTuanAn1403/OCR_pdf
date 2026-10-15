@@ -7,13 +7,18 @@ import math
 import os
 from pathlib import Path
 import yaml
-from rapidocr_onnxruntime import RapidOCR
 from vietocr.tool.config import Cfg
 from vietocr.tool.predictor import Predictor
 from src.ocr.infrastructure.ocr.primary_engine import BaseOCREngine
 from src.ocr.runtime.paths import models_dir
 from src.ocr.runtime.models import model_file_sha256
 from src.ocr.infrastructure.postprocessing.numeric_guard import preserves_numeric_evidence
+
+
+def RapidOCR(*args, **kwargs):
+    """Legacy factory, loaded only when a direct detector was not injected."""
+    from rapidocr_onnxruntime import RapidOCR as LegacyRapidOCR
+    return LegacyRapidOCR(*args, **kwargs)
 
 class VietnameseSeq2SeqEngine(BaseOCREngine):
     """
@@ -24,7 +29,7 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
     - Singleton pattern to prevent repeated weight reloads
     """
     _instance: Optional["VietnameseSeq2SeqEngine"] = None
-    _detector: Optional[RapidOCR] = None
+    _detector: Optional[Any] = None
     _recognizer: Optional[Predictor] = None
     _device: Optional[str] = None
     _model_signature: Optional[Tuple[Any, ...]] = None
@@ -36,12 +41,16 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             cls._instance = super(VietnameseSeq2SeqEngine, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, batch_size: int = 16, device: Optional[str] = None, num_threads: Optional[int] = None):
+    def __init__(self, batch_size: int = 16, device: Optional[str] = None, num_threads: Optional[int] = None,
+                 detector=None):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError("batch_size must be a positive integer")
         self.batch_size = batch_size
 
-        if self._detector is None or num_threads != self._detector_threads:
+        if detector is not None:
+            self._detector = detector
+            self._detector_threads = num_threads
+        elif self._detector is None or num_threads != self._detector_threads or getattr(type(self._detector), "METHOD", None):
             self._detector = RapidOCR(intra_op_num_threads=num_threads, inter_op_num_threads=1) if num_threads else RapidOCR()
             self._detector_threads = num_threads
 
@@ -128,6 +137,8 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         try:
             raw_det, _ = self._detector(img_bgr, use_cls=False, use_rec=False)
         except Exception:
+            if getattr(type(self._detector), "METHOD", None):
+                raise  # Direct detector failures must not look like blank pages.
             return []
         if not raw_det:
             return []
@@ -180,14 +191,22 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
         pil_crops = [bc["pil_crop"] for bc in boxes_and_crops]
         recognition_order = sorted(range(len(pil_crops)), key=lambda i: pil_crops[i].width / pil_crops[i].height)
         recognized_texts, recognized_probs = [""] * len(pil_crops), [0.0] * len(pil_crops)
-        for start in range(0, len(pil_crops), self.batch_size):
-            indices = recognition_order[start:start + self.batch_size]
+        pending = [recognition_order[start:start + self.batch_size] for start in range(0, len(pil_crops), self.batch_size)]
+        while pending:
+            indices = pending.pop(0)
             chunk = [pil_crops[index] for index in indices]
             try:
                 texts, probs = self._recognizer.predict_batch(chunk, return_prob=True)
                 if len(texts) != len(chunk) or len(probs) != len(chunk):
                     raise ValueError("VietOCR batch result does not match the crop count")
-            except Exception:
+            except Exception as exc:
+                if "out of memory" in str(exc).lower():
+                    if len(indices) == 1:
+                        raise RuntimeError("VietOCR OOM at batch 1; checkpoint/restart the stage or use more VRAM") from exc
+                    smaller = max(1, len(indices) // 2)
+                    self.batch_size = min(self.batch_size, smaller)
+                    pending[:0] = [indices[i:i + smaller] for i in range(0, len(indices), smaller)]
+                    continue
                 # Retry only this chunk, preserving successful earlier batches
                 # and the association of each line/probability with its box.
                 predictions = [self._recognizer.predict(img, return_prob=True) for img in chunk]

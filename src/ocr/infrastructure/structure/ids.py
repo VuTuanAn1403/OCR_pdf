@@ -1,9 +1,11 @@
-"""Stable element ids (C3.7): `{doc_sha16}:p{page:04d}:{kind}{n:04d}`.
+"""Compatible export ids (C3.7): `{doc_sha16}:p{page:04d}:{kind}{n:04d}`.
 
 kind: b text block, t table, f formula, i preserved image region. `n` counts
 per kind per page, in the page's list order (blocks are already reading-order
 sorted), so ids depend only on the extraction output and never on how the
-structure step later groups or drops elements.
+structure step later groups or drops elements. Canonical source IDs are
+separate and assigned before ordering in source_identity.py. A finalized page
+uses its shared ordered_item_ids; legacy callers retain the historical flow.
 """
 from __future__ import annotations
 
@@ -41,7 +43,7 @@ def _bbox(values) -> List[float]:
     return [round(float(v), 2) for v in values] if values and len(values) >= 4 else []
 
 
-def page_items(doc_sha16: str, page: ExtractedPage) -> List[Item]:
+def page_items(doc_sha16: str, page: ExtractedPage, *, ignore_flow: bool = False) -> List[Item]:
     """Items of one page in reading order: text blocks in list order, with
     tables, formulas and images inserted before the first block below them."""
     n = page.page_num
@@ -53,6 +55,12 @@ def page_items(doc_sha16: str, page: ExtractedPage) -> List[Item]:
         + [Item(make_id(doc_sha16, n, "i", i), "i", n, _bbox(r.bbox.to_list()), region=r)
            for i, r in enumerate(MarkdownExporter.image_regions_to_preserve(page), 1)]
     )
+    if not ignore_flow and "ordered_item_ids" in page.metadata:
+        by_id = {item.id: item for item in blocks + others}
+        flow = page.metadata["ordered_item_ids"]
+        if len(flow) != len(by_id) or len(set(flow)) != len(flow) or set(flow) != set(by_id):
+            raise ValueError(f"Page {n}: ordered_item_ids loses, duplicates or references unknown items")
+        return [by_id[item_id] for item_id in flow]
     ordered = list(blocks)
     # Stable: elements at the same y keep their kind/list order.
     for other in sorted(others, key=lambda item: item.bbox[1] if item.bbox else float("inf")):

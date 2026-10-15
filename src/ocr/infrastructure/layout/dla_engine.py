@@ -81,14 +81,24 @@ class HeuristicLayoutClassifier:
         model_config: Optional[Dict[str, Any]] = None,
         device: str = "auto",
         num_threads: int = 4,
+        legacy_furniture: bool = True,
     ):
         self.model_path = Path(model_path) if model_path else None
+        self.legacy_furniture = legacy_furniture
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
         self.use_onnx = use_onnx
         self._session = None
         options = dict(model_config or {})
         self.adapter_kind = options.get("adapter", "yolo")
+        self.strict = options.get("on_error") == "raise"
+        if self.adapter_kind == "hf_rtdetr_torch":
+            from src.ocr.infrastructure.layout.torch_layout import TorchLayout
+            self.device = resolve_device(device)
+            self._torch_layout = TorchLayout(options, self.device)
+            self._session = self._torch_layout
+            self.last_error = None
+            return
         self.class_names = options.get("class_names", DLA_CLASSES if self.adapter_kind == "yolo" else None)
         if not self.class_names or not isinstance(self.class_names, list) or not all(isinstance(v, str) for v in self.class_names):
             raise ValueError("Layout adapter requires an explicit class_names list matching the exported model")
@@ -120,6 +130,8 @@ class HeuristicLayoutClassifier:
                 raise RuntimeError("Layout session fell back to CPU despite the requested CUDA device")
             logger.info("Loaded layout model %s using %s", self.model_path, self._session.get_providers()[0])
         except Exception as e:
+            if self.strict:
+                raise RuntimeError(f"GPU layout initialization failed: {e}") from e
             self.last_error = str(e)
             logger.warning("Layout model initialization failed; using geometric fallback: %s", e)
             self._session = None
@@ -152,6 +164,8 @@ class HeuristicLayoutClassifier:
         page_num: int,
     ) -> List[Region]:
         """Run the configured export contract and convert pixels to PDF points."""
+        if hasattr(self, "_torch_layout"):
+            return self._torch_layout.predict(image, page, page_num)
         tensor, geometry = self.adapter.prepare(image)
         inputs = self._session.get_inputs()
         if len(inputs) != 1:
@@ -379,19 +393,19 @@ class HeuristicLayoutClassifier:
         line_count = len(text.splitlines())
 
         # 1. Page Number
-        if re.match(r"^(\d+|[ivxlcdm]+|\btrang\s+\d+(\s*\/\s*\d+)?\b)$", clean_text, re.IGNORECASE):
+        from src.ocr.infrastructure.postprocessing.document_furniture import is_page_number_text
+        page_number = (bool(re.match(r"^(\d+|[ivxlcdm]+|\btrang\s+\d+(\s*\/\s*\d+)?\b)$", clean_text, re.I))
+                       if self.legacy_furniture else is_page_number_text(clean_text))
+        if page_number:
             if bbox.y1 <= header_band_y or bbox.y0 >= footer_band_y:
                 return ContentType.PAGE_NUMBER, "page_number", 5
 
-        # 2. Running Header (Top margin, single line, page > 1)
-        if bbox.y1 <= header_band_y and line_count <= 2 and page_num > 1:
-            # If not a major section title
-            if not re.match(r"^\s*(\d+(\.\d+)*\s*[\.\-]|[IVXLCDM]+\s*[\.\-])", clean_text):
-                return ContentType.HEADER, "header", 3
-
-        # 3. Running Footer (Bottom margin, 1-2 lines)
-        if bbox.y0 >= footer_band_y and line_count <= 2:
-            return ContentType.FOOTER, "footer", 4
+        if self.legacy_furniture:
+            if bbox.y1 <= header_band_y and line_count <= 2 and page_num > 1:
+                if not re.match(r"^\s*(\d+(\.\d+)*\s*[\.\-]|[IVXLCDM]+\s*[\.\-])", clean_text):
+                    return ContentType.HEADER, "header", 3
+            if bbox.y0 >= footer_band_y and line_count <= 2:
+                return ContentType.FOOTER, "footer", 4
 
         # 4. Caption (Begins with Figure/Table/Hình/Bảng/Biểu đồ)
         if re.match(r"^(hình|bảng|ảnh|sơ đồ|biểu đồ|figure|table|fig\.)\s+\d+[:\.\-]", clean_text, re.IGNORECASE):

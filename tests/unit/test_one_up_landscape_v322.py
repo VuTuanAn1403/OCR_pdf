@@ -8,7 +8,7 @@ from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
 
 class TestOneUpLandscapeV322:
     def test_pipeline_version_v322(self):
-        assert PIPELINE_VERSION in ("3.2.2", "4.0.0", "4.2.0", "4.3.0", "5.0.0", "6.1.0")
+        assert PIPELINE_VERSION in ("3.2.2", "4.0.0", "4.2.0", "4.3.0", "5.0.0", "6.1.0", "6.2.0.dev1", "6.2.0.dev2")
 
     def test_is_glyph_noise_detects_sliced_table_scans(self):
         # 88 single character slices ('I', '1', 'l') + 7 margin stamp words

@@ -44,7 +44,7 @@ TORCH_PACKAGES=("torch==2.12.1${TORCH_SUFFIX}" "torchvision==0.27.1${TORCH_SUFFI
 
 echo "[1/4] Main environment (.venv, backend=$TORCH_BACKEND)"
 [[ -x .venv/bin/python ]] || uv venv .venv --python "$PYTHON_BIN"
-uv pip install --python .venv/bin/python -r requirements.txt "${TORCH_PACKAGES[@]}" \
+uv pip install --python .venv/bin/python -r requirements-legacy.txt "${TORCH_PACKAGES[@]}" \
   --torch-backend "$TORCH_BACKEND" --reinstall-package torch --reinstall-package torchvision
 uv pip install --python .venv/bin/python -e . --no-deps
 

@@ -121,6 +121,8 @@ class ConvertDocumentUseCase:
         """Profile with the device resolved to `cpu` or `cuda` and passed to
         Docling too, so the resolved device is part of every cache key."""
         config = copy.deepcopy(get_profile(self.profiles, profile_name))
+        if config.get("runtime", {}).get("scheduler") == "document_two_phase_v1":
+            raise ValueError("This profile requires the CPU-only supervisor: python -m src.ocr.cli.gpu_runner")
         if self.batch_size is not None:
             config["batch_size"] = self.batch_size
         if self.thread_budget is not None:
@@ -159,15 +161,20 @@ class ConvertDocumentUseCase:
         warmup: bool = False,
         cache_dir: Optional[str] = None,
         output_mode: str = "legacy",
+        keywords_file: Optional[str] = None,
     ) -> ExtractedDocument:
         # ENV-11: logs of this document carry its ID (the PDF stem, as below).
         with log_context(doc_id=Path(file_path).stem):
             return self._execute_document(file_path, profile_name, pages, output_dir, resume, benchmark,
                                           accuracy_report, ground_truth_dir, device, assets_mode, warmup,
-                                          cache_dir, output_mode)
+                                          cache_dir, output_mode, keywords_file)
 
     def _execute_document(self, file_path, profile_name, pages, output_dir, resume, benchmark, accuracy_report,
-                          ground_truth_dir, device, assets_mode, warmup, cache_dir, output_mode) -> ExtractedDocument:
+                          ground_truth_dir, device, assets_mode, warmup, cache_dir, output_mode,
+                          keywords_file=None) -> ExtractedDocument:
+        from src.ocr.application.count_keywords import CountKeywordsUseCase
+        from src.ocr.infrastructure.postprocessing.keyword_counter import KeywordCounter
+        KeywordCounter.load_keywords(CountKeywordsUseCase.resolve_keywords_file(keywords_file))
         from src.ocr.infrastructure.export.output_contract import OUTPUT_MODES
         if output_mode not in OUTPUT_MODES:
             raise ValueError(f"Unknown output_mode {output_mode!r}")
@@ -308,6 +315,15 @@ class ConvertDocumentUseCase:
         extracted_doc.manifest = ManifestExporter.generate_manifest(
             extracted_doc, config, config_path=self.config_path,
             cache_key=page_processor.cache_key, resume=resume)
+        from src.ocr.runtime.config import document_layout_settings
+        from src.ocr.application.resolve_document_layout import resolve_document_layout
+        t_layout = time.perf_counter()
+        settings = document_layout_settings(config)
+        if settings["method"] == "region_tree_graph_v1":
+            resolve_document_layout(extracted_doc, settings)
+        else:
+            extracted_doc.manifest["document_layout"] = {"method": "legacy", "algorithm_version": "legacy-v6.1"}
+        timing["document_layout_seconds"] = round(time.perf_counter() - t_layout, 3)
 
         # Benchmark data if requested
         benchmark_data = None
@@ -333,7 +349,8 @@ class ConvertDocumentUseCase:
         out_path = Path(output_dir)
         t_export = time.perf_counter()
         doc_dir = ExportDocumentUseCase.execute(extracted_doc, out_path, benchmark_data,
-                                               assets_mode=assets_mode, output_mode=output_mode)
+                                               assets_mode=assets_mode, output_mode=output_mode,
+                                               keywords_file=keywords_file)
         timing["export_seconds"] = round(time.perf_counter() - t_export, 3)
         # Open to validation.json written, export included (6.1 document latency).
         timing["document_latency_seconds"] = round(time.perf_counter() - t0, 3)

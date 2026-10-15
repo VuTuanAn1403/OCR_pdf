@@ -51,7 +51,8 @@ def _convert_job(job: dict) -> dict:
     doc = _CONVERTER.execute(file_path=job["file_path"], profile_name=job["profile"], device=job["device"],
         output_dir=job["output_dir"], cache_dir=job["cache_dir"], resume=job["resume"],
         assets_mode=job["assets_mode"], benchmark=True, accuracy_report=job["accuracy_report"],
-        ground_truth_dir=job["ground_truth_dir"], output_mode=job.get("output_mode", "legacy"))
+        ground_truth_dir=job["ground_truth_dir"], output_mode=job.get("output_mode", "legacy"),
+        keywords_file=job.get("keywords_file"))
     if source_fingerprint() != job["source_fingerprint"]:
         raise RuntimeError("Pipeline code changed while this batch was running")
     if ArtifactCache.compute_file_hash(job["file_path"]) != job["pdf_sha16"]:

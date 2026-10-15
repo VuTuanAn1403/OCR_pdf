@@ -251,7 +251,7 @@ class PageContentAnalyzer:
         if width < height * 1.15:
             return regions
 
-        cuts = self._find_vertical_gutters(image_bgr)
+        cuts = self._find_vertical_gutters(image_bgr, legacy=getattr(self.dla_engine, "legacy_furniture", True))
         if not cuts:
             return regions
 
@@ -407,7 +407,7 @@ class PageContentAnalyzer:
         return None
 
     @staticmethod
-    def _find_vertical_gutters(image_bgr: np.ndarray) -> List[int]:
+    def _find_vertical_gutters(image_bgr: np.ndarray, *, legacy: bool = True) -> List[int]:
         gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
         height, width = gray.shape[:2]
         y0, y1 = int(height * 0.04), int(height * 0.96)
@@ -417,7 +417,8 @@ class PageContentAnalyzer:
 
         smooth = np.convolve(ink, np.ones(9) / 9.0, mode="same")
         candidates: List[Tuple[float, int]] = []
-        for x in range(int(width * 0.18), int(width * 0.82)):
+        start, end = (.18, .82) if legacy else (.04, .96)
+        for x in range(int(width * start), int(width * end)):
             if smooth[x] > 0.015:
                 continue
             radius = max(3, int(width * 0.006))
@@ -441,8 +442,7 @@ class PageContentAnalyzer:
             if left_density >= 0.01 and right_density >= 0.01:
                 gutters.append(center)
 
-        # Keep at most two strongest gutters, ordered left-to-right.
-        return sorted(gutters, key=lambda x: float(smooth[x]))[:2]
+        return sorted(gutters, key=lambda x: float(smooth[x]))[:2] if legacy else sorted(gutters)
 
     def _classify_image_region(
         self,

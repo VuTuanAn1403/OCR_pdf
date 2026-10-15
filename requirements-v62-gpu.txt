@@ -1,0 +1,5 @@
+# Resolver input retained for compatibility; do not use for reproducible installs.
+# V6.2 installations: python scripts/setup_v62.py
+# Exact platform/hash locks: requirements/v62/{windows,linux}-*-gpu.lock.
+-r requirements.txt
+onnxruntime-gpu==1.23.2

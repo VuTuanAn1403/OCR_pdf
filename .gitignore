@@ -5,6 +5,11 @@
 # Virtual Environments
 .venv/
 .venv-docling/
+.venv-v62-gpu/
+.venv-v62/
+.venv-v62-clean/
+.venv-cpu-benchmark/
+.pytest_tmp/
 models/docling/
 venv/
 ENV/
@@ -115,11 +120,10 @@ output/*
 !sample.pdf
 
 # Excluded documentation, notes, and local reports
-docs/
+/docs/
 reports/
 research_notes/
 CLAUDE.md
-CLEANUP_REPORT.md
 CLEANUP_RESPORT.md
 .claude/
 Noi dung nghien cuu.pdf

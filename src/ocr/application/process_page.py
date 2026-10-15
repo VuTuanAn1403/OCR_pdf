@@ -95,6 +95,8 @@ class ProcessPageUseCase:
     ):
         self.doc = doc
         self.config = config
+        from src.ocr.runtime.config import document_layout_settings
+        self.document_layout = document_layout_settings(config)
         self.doc_hash = doc_hash
         self.cache = cache
 
@@ -110,8 +112,14 @@ class ProcessPageUseCase:
         if primary_engine == "rapidocr":
             self.ocr_engine = RapidOCREngine(num_threads=threads) if threads else RapidOCREngine()
         elif primary_engine == "vietocr":
+            detector_args = {}
+            if config.get("text_detector"):
+                from src.ocr.infrastructure.ocr.text_detector import ONNXTextDetector
+                detector_args["detector"] = ONNXTextDetector(config["text_detector"], config.get("device", "cpu"),
+                                                           num_threads=threads or 2)
             self.ocr_engine = VietnameseSeq2SeqEngine(
                 batch_size=config.get("batch_size", 16), device=config.get("device"),
+                **detector_args,
                 **({"num_threads": threads} if threads is not None else {}))
         else:
             raise ValueError(f"Unsupported primary_engine: {primary_engine}")
@@ -125,6 +133,7 @@ class ProcessPageUseCase:
             model_config=layout_config,
             device=config.get("device", "cpu"),
             num_threads=layout_config.get("num_threads", config.get("num_threads", 4)),
+            legacy_furniture=self.document_layout["method"] == "legacy",
         ))
         self.fallback_engine = FallbackEngine(
             upscale_dpi=config.get("fallback_upscale_dpi", 250),
@@ -200,9 +209,13 @@ class ProcessPageUseCase:
             # transforms are invertible, do not merge original-PDF model boxes.
             meta["layout_model"].update(status="SKIPPED_COORDINATE_TRANSFORM_REQUIRED",
                                         reason="Legacy rotated OCR/PDF coordinates need an explicit transform")
+            if getattr(engine, "strict", False) is True:
+                raise RuntimeError("Strict GPU layout requires a verified coordinate transform for this rotated page")
             return
         if engine._session is None:
             meta["layout_model"]["error"] = engine.last_error or "ONNX session unavailable"
+            if getattr(engine, "strict", False) is True:
+                raise RuntimeError(meta["layout_model"]["error"])
             return
         started = time.perf_counter()
         try:
@@ -228,6 +241,8 @@ class ProcessPageUseCase:
                                         coordinates="PDF_POINTS_TOP_LEFT_CROP_RELATIVE",
                                         validated_on_pilot=False)
         except Exception as exc:
+            if getattr(engine, "strict", False) is True:
+                raise
             meta["layout_model"]["error"] = str(exc)
             logger.warning("Page %d: layout model failed; retaining geometric regions: %s", page_num, exc)
         finally:
@@ -289,6 +304,17 @@ class ProcessPageUseCase:
         # Replace only overlapping heuristic tables. Unmatched tables and text
         # remain, including when Docling finds no structures.
         tables = [table for table in tables if not block_is_covered(table.bbox, model_tables, 0.5)] + model_tables
+        # Freeze formula ownership at the point where the original text is
+        # replaced. LaTeX need not equal the OCR transcription byte-for-byte.
+        for block in blocks:
+            if re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip()):
+                continue  # equation labels are independent visible evidence
+            owners = [formula for formula in formulas if block_is_covered(block.bbox, [formula])]
+            if len(owners) == 1 and block.source_id:
+                parents = owners[0].provenance.setdefault("derived_from_source_ids", [])
+                if block.source_id not in parents:
+                    parents.append(block.source_id)
+                owners[0].provenance["source_mapping_method"] = "docling-formula-absorption-v1"
         blocks = [block for block in blocks if not block_is_covered(block.bbox, model_tables)
                   and (re.fullmatch(r"\(\d+(?:\.\d+)*\)", block.text.strip())
                        or not block_is_covered(block.bbox, formulas))]
@@ -793,6 +819,14 @@ class ProcessPageUseCase:
         # 5. Extract tables (doc_page already obtained during content analysis)
         self._apply_layout_model(doc_page, page_num, blocks, regions, meta,
                                  None if is_native_eligible else img_bgr)
+        from src.ocr.infrastructure.structure.source_identity import lock_text_evidence
+        from src.ocr.infrastructure.postprocessing.document_furniture import protect_table_continuation_lines
+        # Protect continuation signals before any structure worker can absorb
+        # text, and freeze evidence before sorting/removal changes list order.
+        from types import SimpleNamespace
+        if self.document_layout["method"] != "legacy":
+            protect_table_continuation_lines([SimpleNamespace(page_num=page_num, blocks=blocks)])
+            lock_text_evidence(blocks, self.doc_hash, page_num, meta)
         # Opt-in evidence for C3.5(a) experiments. Table extraction removes
         # covered blocks later; A and B must still receive the same OCR lines.
         if self.config.get("retain_table_ocr_lines", False):
@@ -851,6 +885,7 @@ class ProcessPageUseCase:
         order_sorter = ReadingOrderSorter(page_width=page_w, page_height=page_h,
                                           method=reading_order.get("method", "heuristic"),
                                           min_gap=reading_order.get("min_gap", 3.0))
+        order_sorter.classify_furniture = self.document_layout["method"] == "legacy"
         sorted_blocks = order_sorter.sort_blocks(blocks)
         if reading_order:  # explicit choice (C3.4 experiment) is recorded; the default stays unchanged
             meta["reading_order"] = {"method": order_sorter.method, "min_gap": order_sorter.min_gap,

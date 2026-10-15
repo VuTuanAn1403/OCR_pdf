@@ -148,7 +148,7 @@ def test_english_translation_line_becomes_title_en():
     assert "# THÔNG TIN CHUNG\n\n*GENERAL INFORMATION*" in md
 
 
-def test_repeated_running_section_title_is_not_a_new_section():
+def test_repeated_running_section_title_is_not_a_new_section_in_legacy_mode():
     builder = Builder()
     for page in (1, 2, 3):
         builder.add("TỔ CHỨC VÀ NHÂN SỰ", page=page, size=16).body(page=page)

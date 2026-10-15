@@ -20,6 +20,19 @@ def _valid_bbox(box: List[float]) -> List[float]:
 
 Coordinate = Annotated[float, Field(allow_inf_nan=False)]
 BBox = Annotated[List[Coordinate], Field(min_length=4, max_length=4), AfterValidator(_valid_bbox)]
+
+
+def _evidence_bbox(box):
+    if not box:
+        return box  # UNPLACED is checked semantically, without a fictitious box.
+    if len(box) == 4:
+        _valid_bbox(box)
+    if len(box) != 4 or box[2] <= box[0] or box[3] <= box[1]:
+        raise ValueError("Evidence bbox must have positive area, or be empty for UNPLACED")
+    return box
+
+
+EvidenceBBox = Annotated[List[Coordinate], AfterValidator(_evidence_bbox)]
 ElementId = Annotated[str, Field(pattern=r"^[^:\s]+:p\d{4}:[btfi]\d{4}$")]
 SectionId = Annotated[str, Field(pattern=r"^[^:\s]+:s\d{4}$")]
 PageNumber = Annotated[int, Field(ge=1)]
@@ -32,7 +45,7 @@ class ContractModel(BaseModel):
 
 class Span(ContractModel):
     page: PageNumber
-    bbox: BBox
+    bbox: EvidenceBBox
     block_ids: Annotated[List[ElementId], Field(min_length=1)]
 
 
@@ -67,7 +80,7 @@ class Cell(TextProvenance):
 class ExtractionItem(TextProvenance):
     id: ElementId
     kind: Literal["b", "t", "f", "i"]
-    bbox: BBox
+    bbox: EvidenceBBox
     cells: List[Cell] = Field(default_factory=list)
 
 
@@ -82,7 +95,7 @@ class ExtractionPage(ContractModel):
 
 
 class ExtractionContract(ContractModel):
-    schema_version: Literal["extraction-v1"]
+    schema_version: Literal["extraction-v1", "extraction-v2-layout"]
     doc_id: str
     doc_sha16: str
     pipeline_version: str
@@ -185,7 +198,7 @@ class FigureLinks(ContractModel):
 
 
 class DocumentContract(ContractModel):
-    schema_version: Literal["doc-v1"]
+    schema_version: Literal["doc-v1", "doc-v2-layout"]
     doc_id: str
     doc_sha16: str
     source: Dict[str, Any]
@@ -218,7 +231,7 @@ class DroppedItem(ContractModel):
 
 
 class StructureContract(ContractModel):
-    schema_version: Literal["structure-v1"]
+    schema_version: Literal["structure-v1", "structure-v2-layout"]
     doc_sha16: str
     method: Annotated[str, Field(min_length=1)]
     params: Dict[str, Any]
@@ -228,12 +241,16 @@ class StructureContract(ContractModel):
     dropped: List[DroppedItem]
 
 
-def contract_json_schemas() -> Dict[str, Dict[str, Any]]:
+def contract_json_schemas(*, include_layout: bool = False) -> Dict[str, Dict[str, Any]]:
     """Return portable JSON Schemas with explicit dialect and version IDs."""
     result = {}
-    for name, model in (("extraction-v1", ExtractionContract), ("doc-v1", DocumentContract),
-                        ("structure-v1", StructureContract)):
+    versions = [("extraction-v1", ExtractionContract), ("doc-v1", DocumentContract), ("structure-v1", StructureContract)]
+    if include_layout:
+        versions += [("extraction-v2-layout", ExtractionContract), ("doc-v2-layout", DocumentContract),
+                     ("structure-v2-layout", StructureContract)]
+    for name, model in versions:
         schema = model.model_json_schema()
+        schema["properties"]["schema_version"] = {"const": name, "type": "string"}
         schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
         schema["$id"] = f"urn:ocr-pdf:{name}"
         result[name] = schema
@@ -251,12 +268,44 @@ def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
     known = {}
     pages = set()
     for page in source.pages:
+        extras = page.model_extra or {}
+        flow = extras.get("ordered_item_ids")
+        if flow is not None:
+            item_ids = [item.id for item in page.items]
+            if flow != item_ids or len(set(flow)) != len(flow):
+                errors.append(f"extraction.json page {page.page}: ordered_item_ids differs from item sequence or duplicates items")
+            indices = [(item.model_extra or {}).get("reading_order_index") for item in page.items]
+            if indices != list(range(len(page.items))):
+                errors.append(f"extraction.json page {page.page}: reading_order_index is not contiguous")
+            source_ids = [(item.model_extra or {}).get("source_id") for item in page.items]
+            if None in source_ids or len(set(source_ids)) != len(source_ids):
+                errors.append(f"extraction.json page {page.page}: source_id missing or duplicated")
+            for item in page.items:
+                meta = item.model_extra or {}
+                if meta.get("visibility") == "suppressed" and (
+                        meta.get("role_final") not in ("running_header", "running_footer")
+                        or meta.get("role_status") != "ACCEPTED" or meta.get("protected_from_furniture")
+                        or len(set(meta.get("support_page_ids", []))) < 3):
+                    errors.append(f"extraction.json {item.id}: invalid furniture suppression")
+            current_sources = set(source_ids)
+            dispositions = extras.get("source_dispositions") or {}
+            for archived in (extras.get("text_evidence") or {}).get("items", []):
+                sid = archived.get("source_id")
+                disposition = dispositions.get(sid, {})
+                if sid not in current_sources:
+                    owners = [item for item in page.items if item.kind in ("t", "f")
+                              and archived.get("source_id") in (item.model_extra or {}).get("derived_from_source_ids", [])]
+                    if (len(owners) != 1 or disposition.get("status") != (
+                            "REPLACED_BY_TABLE" if owners[0].kind == "t" else "REPLACED_BY_FORMULA")):
+                        errors.append(f"extraction.json archived source {sid}: missing source disposition/mapping")
         if page.page in pages:
             errors.append(f"extraction.json duplicate page {page.page}")
         pages.add(page.page)
         if page.page > source.total_pages:
             errors.append(f"extraction.json page {page.page} exceeds total_pages")
         for item in page.items:
+            if not item.bbox and "UNPLACED" not in (item.model_extra or {}).get("review_reason_codes", []):
+                errors.append(f"extraction.json {item.id}: missing bbox requires UNPLACED review")
             if item.id in known:
                 errors.append(f"extraction.json duplicate element id {item.id}")
             known[item.id] = (page.page, item)
@@ -289,6 +338,11 @@ def validate_contract_set(extraction: Dict[str, Any], document: Dict[str, Any],
         return errors
     doc = DocumentContract.model_validate(document)
     source = ExtractionContract.model_validate(extraction)
+    modern = source.schema_version == "extraction-v2-layout"
+    if tree.schema_version != ("structure-v2-layout" if modern else "structure-v1"):
+        errors.append("structure.json schema differs from extraction.json layout version")
+    if doc.schema_version != ("doc-v2-layout" if modern else "doc-v1"):
+        errors.append("document.json schema differs from extraction.json layout version")
     if tree.doc_sha16 != source.doc_sha16:
         errors.append("structure.json belongs to a different document")
     headings = {s.section_id: s for s in doc.sections if s.level > 0}
@@ -335,6 +389,8 @@ def validate_contract_pair(extraction: Dict[str, Any], document: Dict[str, Any])
     if errors:
         return errors
     source, doc = parsed
+    if doc.schema_version != ("doc-v2-layout" if source.schema_version == "extraction-v2-layout" else "doc-v1"):
+        errors.append("document.json schema differs from extraction.json layout version")
     if (source.doc_id, source.doc_sha16) != (doc.doc_id, doc.doc_sha16):
         errors.append("document.json identity differs from extraction.json")
 

@@ -85,18 +85,50 @@ def build_workbook(output_dir: Path, excel_path: Path) -> None:
     overview["C2"] = "Profile"
     overview["D2"] = summary.get("profile")
 
+    completed_files = [f for f in files if f.get("status") in ("COMPLETED", "CACHED") and f.get("seconds_per_page") is not None]
+
+    if completed_files:
+        tot_files = len(files)
+        comp_count = len(completed_files)
+        fail_count = sum(1 for f in files if f.get("status") in ("FAILED", "FAILED_INPUT"))
+        tot_pages = sum(f.get("total_pages", 0) for f in files)
+        tot_duration = round(sum(f.get("wall_clock_seconds", 0) or 0 for f in completed_files), 2)
+        sec_list = sorted([f.get("seconds_per_page") for f in completed_files if f.get("seconds_per_page") is not None])
+        avg_sec = round(tot_duration / tot_pages, 2) if tot_pages > 0 else 0.0
+        import statistics
+        median_sec = round(statistics.median(sec_list), 2) if sec_list else 0.0
+        p95_idx = int(0.95 * len(sec_list)) if sec_list else 0
+        p95_sec = round(sec_list[min(p95_idx, len(sec_list)-1)], 2) if sec_list else 0.0
+        ppm_val = round((tot_pages / tot_duration) * 60, 2) if tot_duration > 0 else 0.0
+        fastest_item = min(completed_files, key=lambda x: x.get("seconds_per_page", 999999))
+        slowest_item = max(completed_files, key=lambda x: x.get("seconds_per_page", -1))
+        fastest_name = fastest_item.get("file_name", fastest_item.get("document_id"))
+        slowest_name = slowest_item.get("file_name", slowest_item.get("document_id"))
+    else:
+        tot_files = summary.get("total_files")
+        comp_count = summary.get("completed")
+        fail_count = summary.get("failed")
+        tot_pages = summary.get("processed_pages")
+        tot_duration = summary.get("total_batch_duration_seconds")
+        avg_sec = summary.get("average_seconds_per_page")
+        median_sec = summary.get("median_seconds_per_page")
+        p95_sec = summary.get("p95_seconds_per_page")
+        ppm_val = summary.get("overall_pages_per_minute")
+        fastest_name = (summary.get("fastest_file") or {}).get("file_name")
+        slowest_name = (summary.get("slowest_file") or {}).get("file_name")
+
     metrics = [
-        ("Tổng file", summary.get("total_files")),
-        ("File hoàn tất", summary.get("completed")),
-        ("File lỗi", summary.get("failed")),
-        ("Tổng trang", summary.get("processed_pages")),
-        ("Tổng thời gian (giây)", summary.get("total_batch_duration_seconds")),
-        ("Trung bình giây/trang", summary.get("average_seconds_per_page")),
-        ("Trung vị giây/trang", summary.get("median_seconds_per_page")),
-        ("P95 giây/trang", summary.get("p95_seconds_per_page")),
-        ("Trang/phút", summary.get("overall_pages_per_minute")),
-        ("File nhanh nhất", (summary.get("fastest_file") or {}).get("file_name")),
-        ("File chậm nhất", (summary.get("slowest_file") or {}).get("file_name")),
+        ("Tổng file", tot_files),
+        ("File hoàn tất", comp_count),
+        ("File lỗi", fail_count),
+        ("Tổng trang", tot_pages),
+        ("Tổng thời gian (giây)", tot_duration),
+        ("Trung bình giây/trang", avg_sec),
+        ("Trung vị giây/trang", median_sec),
+        ("P95 giây/trang", p95_sec),
+        ("Trang/phút", ppm_val),
+        ("File nhanh nhất", fastest_name),
+        ("File chậm nhất", slowest_name),
     ]
     overview.append([])
     overview.append(["Chỉ số", "Giá trị"])
@@ -108,7 +140,6 @@ def build_workbook(output_dir: Path, excel_path: Path) -> None:
 
     overview["F2"] = "File"
     overview["G2"] = "Giây/trang"
-    completed_files = [f for f in files if f.get("status") in ("COMPLETED", "CACHED") and f.get("seconds_per_page") is not None]
     for row_idx, item in enumerate(completed_files, 3):
         overview.cell(row=row_idx, column=6, value=item.get("document_id"))
         overview.cell(row=row_idx, column=7, value=item.get("seconds_per_page"))

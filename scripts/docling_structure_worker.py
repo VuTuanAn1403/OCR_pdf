@@ -25,6 +25,9 @@ class RuntimeErrors(logging.Handler):
 
 
 def build_converter(options):
+    if options.get("dependency_lock"):
+        from src.ocr.runtime.dependency_lock import verify_installed_lock
+        verify_installed_lock(options["dependency_lock"])
     from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import (
@@ -41,6 +44,10 @@ def build_converter(options):
     except Exception:
         pass
     pipeline = PdfPipelineOptions()
+    if options.get("strict_gpu"):
+        pipeline.layout_batch_size = 1
+        pipeline.table_batch_size = 1
+        pipeline.ocr_batch_size = 1
     # The parent resolves "auto" to a concrete device; default stays CPU.
     device = AcceleratorDevice(options.get("device", "cpu"))
     pipeline.accelerator_options = AcceleratorOptions(device=device, num_threads=num_threads)
@@ -64,6 +71,10 @@ def build_converter(options):
     # Load layout/table/formula models now, so a warm-up request measures
     # start-up separately from the first page (PERF-05).
     converter.initialize_pipeline(InputFormat.PDF)
+    if options.get("verify_placement"):
+        from src.ocr.runtime.torch_placement import TorchPlacementAudit
+        converter.placement_audit = TorchPlacementAudit(options.get("device", "cpu"))
+        converter.placement_audit.discover(converter.initialized_pipelines)
     if pipeline.do_formula_enrichment:
         # The 2.137.0 stage hardcodes 2048 per VlmEngineInput, overriding
         # model_spec.max_new_tokens. Bound actual engine requests as well.
@@ -72,6 +83,8 @@ def build_converter(options):
         for runtime in converter.initialized_pipelines.values():
             for model in runtime.enrichment_pipe:
                 if isinstance(model, CodeFormulaVlmModel) and model.engine is not None:
+                    if options.get("strict_gpu"):
+                        model.elements_batch_size = 1
                     predict = model.engine.predict_batch
                     limit = pipeline.code_formula_options.model_spec.max_new_tokens
                     def bounded_predict(inputs, _predict=predict, _limit=limit):
@@ -89,6 +102,8 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
     if pipeline.do_formula_enrichment:
         converter.formula_request_limits.clear()
     result = converter.convert(Path(pdf), raises_on_error=True)
+    if hasattr(converter, "placement_audit"):
+        converter.placement_audit.report(require_inference=True)
     doc = result.document
     tables, formulas, layout_items = [], [], []
     formula_hints = list(formula_hints)
@@ -189,6 +204,8 @@ def convert_structures(converter, pipeline, pdf, formula_hints=()):
         "resolved_hf_revisions": revisions, "ocr_languages": pipeline.ocr_options.lang,
         "ocr_enabled": pipeline.do_ocr, "coordinates": "PDF_POINTS_TOP_LEFT",
         "conversion_status": result.status.value,
+        "placement": (converter.placement_audit.report(require_inference=True)
+                      if hasattr(converter, "placement_audit") else {"status": "NOT_EVALUATED"}),
     }
     return {"status": result.status.value, "tables": tables, "formulas": formulas,
             "layout_items": layout_items,

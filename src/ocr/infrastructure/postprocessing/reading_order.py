@@ -12,13 +12,14 @@ class ReadingOrderSorter:
     multi-column detection, and header/footer separation.
     """
     def __init__(self, page_width: float = 595.0, page_height: float = 842.0,
-                 method: str = "heuristic", min_gap: float = 3.0):
+                 method: str = "heuristic", min_gap: float = 3.0, classify_furniture: bool = True):
         if method not in READING_ORDER_METHODS:
             raise ValueError(f"reading_order.method must be one of {', '.join(READING_ORDER_METHODS)}")
         self.page_width = page_width
         self.page_height = page_height
         self.method = method
         self.min_gap = min_gap
+        self.classify_furniture = classify_furniture
 
     def sort_blocks(self, blocks: List[TextBlock]) -> List[TextBlock]:
         if not blocks:
@@ -29,9 +30,6 @@ class ReadingOrderSorter:
         footers: List[TextBlock] = []
         page_numbers: List[TextBlock] = []
         body: List[TextBlock] = []
-
-        header_cutoff = self.page_height * 0.10
-        footer_cutoff = self.page_height * 0.90
 
         for block in blocks:
             # A formula near a page edge is still mathematical content.
@@ -57,20 +55,20 @@ class ReadingOrderSorter:
                 page_numbers.append(block)
                 continue
 
-            # Fallback geometric categorization for unlabelled blocks
-            import re
-            is_section_number = bool(re.match(r"^\s*(\d+(\.\d+)*\s*[\)\.\/\-]|[IVXLCDM]+\s*[\)\.\/\-]|phần\s+[IVXLCDM]+)", block.text, re.IGNORECASE))
-            is_geom_header = (block.page > 1) and (not is_section_number) and (y1 <= header_cutoff) and (len(block.text.splitlines()) <= 2) and (len(block.text.strip()) <= 80)
-            is_geom_footer = (y0 >= footer_cutoff) and (not is_section_number) and (len(block.text.splitlines()) <= 2) and (len(block.text.strip()) <= 80)
-
-            if is_geom_header:
-                block.block_type = "header"
-                headers.append(block)
-            elif is_geom_footer:
-                block.block_type = "footer"
-                footers.append(block)
-            else:
-                body.append(block)
+            if self.classify_furniture:
+                # Preserve the V6.1 policy only on the explicit legacy path.
+                import re
+                section = bool(re.match(r"^\s*(\d+(\.\d+)*\s*[\)\.\/\-]|[IVXLCDM]+\s*[\)\.\/\-]|phần\s+[IVXLCDM]+)", block.text, re.I))
+                short = len(block.text.splitlines()) <= 2 and len(block.text.strip()) <= 80
+                if not section and short and block.page > 1 and y1 <= self.page_height * .10:
+                    block.block_type = "header"
+                    headers.append(block)
+                    continue
+                if not section and short and y0 >= self.page_height * .90:
+                    block.block_type = "footer"
+                    footers.append(block)
+                    continue
+            body.append(block)
 
         # Sort headers, footers and page numbers top-down, left-right
         sorted_headers = self._sort_column(headers)
