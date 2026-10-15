@@ -66,8 +66,8 @@ class LLMVerifier:
             mt = cand["matched_text"].lower()
             sim = cand["similarity"]
 
-            # Baseline rule: high similarity and length closely matched
-            is_valid = sim >= 0.80 and abs(len(kw) - len(mt)) <= 3
+            # Baseline rule: high similarity (>= 86%) and length closely matched
+            is_valid = sim >= 0.86 and abs(len(kw) - len(mt)) <= 3
 
             reasoning = "Heuristic verified: high character/diacritic similarity" if is_valid else "Heuristic rejected"
 

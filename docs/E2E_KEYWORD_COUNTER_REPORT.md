@@ -39,7 +39,7 @@ flowchart TD
         D --> W["Bộ lọc Word-Level Gate (Loại từ khác biệt)"]
         W --> V["Tính điểm tương đồng tổng hợp (calc_vietnamese_similarity)"]
         V --> N["Non-Maximum Suppression (NMS - Chống đếm trùng sub-window)"]
-        N -->|Ngưỡng 80% - 99%| CANDS["8 Ứng viên nghi vấn kèm ngữ cảnh câu"]
+        N -->|Ngưỡng 86% - 99%| CANDS["8 Ứng viên nghi vấn kèm ngữ cảnh câu"]
     end
     
     subgraph S3["Tầng 3: Trọng tài LLM ngữ cảnh (LLM Semantic Verifier)"]
