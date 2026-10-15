@@ -239,19 +239,6 @@ python scripts/check_installation.py
 python scripts/smoke_test.py
 ```
 
-#### 4. Google Colab GPU
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/VuTuanAn1403/OCR/blob/main/notebooks/colab_v6.ipynb)
-
-Mở [notebook Colab](notebooks/colab_v6.ipynb), chọn **Runtime → Change runtime type → GPU**, rồi chạy các ô từ trên xuống. Notebook cài Python 3.11 và hai môi trường cách ly, kiểm tra VietOCR thực sự dùng CUDA và chạy thử một trang trước khi xử lý cả lô.
-
-- Up PDF vào `MyDrive/ocr_pdf/data/raw/` trên Google Drive; không cần đưa PDF/model lên GitHub.
-- Mặc định `PROFILE = "balanced"` dùng VietOCR + Docling TableFormer/CodeFormula. Chọn `"local"` nếu chỉ cần VietOCR GPU cùng bảng heuristic/vector.
-- Sau smoke, đặt `RUN_FULL_BATCH = True` và chạy ô xử lý lô. Mặc định một worker, một shard bao phủ toàn bộ đầu vào; kết quả/model/cache/log lưu trên Drive.
-- Notebook dùng đúng repo này, ghi SHA nguồn và phiên bản môi trường. Không cần thư mục `docs` để cài hoặc chạy.
-
-Xem [hướng dẫn Colab](notebooks/README.md). Đã kiểm tra schema/cú pháp notebook và giải dependency Python 3.11/Linux/CUDA; **chưa chạy trực tiếp trong phiên Google Colab**.
-
 ---
 
 ## 5. Hướng Dẫn Sử Dụng (CLI)
@@ -495,7 +482,7 @@ output/<DOC_ID>/
 
 ## 8. Đảm Bảo Chất Lượng & Kiểm Thử Khoa Học
 
-Bộ kiểm thử bao phủ domain, pipeline, hợp đồng, runtime, notebook Colab, protocol nghiên cứu và keyword. Lần chạy sau tích hợp ngày **16/10/2026**: **721 passed, 3 skipped, 1 warning** trong **60,27 giây**; ba ca bỏ qua cần PDF BHN/CLW hoặc golden prediction CLW chưa có. Cảnh báo là `pkg_resources` bị deprecated trong dependency `gdown`.
+Bộ kiểm thử bao phủ domain, pipeline, hợp đồng, runtime, protocol nghiên cứu và keyword. Kết quả kiểm chứng tích hợp keyword ngày **16/10/2026**, trước khi dọn thư mục notebook: **721 passed, 3 skipped, 1 warning** trong **60,27 giây**; ba ca bỏ qua cần PDF BHN/CLW hoặc golden prediction CLW chưa có. Cảnh báo là `pkg_resources` bị deprecated trong dependency `gdown`. Năm ca kiểm thử chỉ dành cho notebook đã được gỡ cùng thư mục tương ứng.
 
 ```bash
 # Chạy toàn bộ kiểm thử
