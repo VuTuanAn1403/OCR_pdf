@@ -8,6 +8,18 @@ on:
   pull_request:
 
 jobs:
+  venv-symlink:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install "pytest>=8.0.0,<=9.1.1"
+      - name: Verify real Linux venv symlink behavior
+        run: python -m pytest tests/unit/test_venv_interpreter_paths.py::test_real_linux_venv_package_is_lost_only_when_python_symlink_is_resolved -q -p no:cacheprovider
+
   unit:
     strategy:
       fail-fast: false

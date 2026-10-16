@@ -100,7 +100,7 @@ def run_document(request, *, resume=False):
     snapshot = gpu_snapshot(request["device"])
     identity = {"pdf": sha256(request["pdf"]), "source": source_fingerprint(),
                 "config": request["config"], "pages": request.get("pages"),
-                "device": request["device"], "python": str(Path(request["text_python"]).resolve()),
+                "device": request["device"], "python": str(Path(request["text_python"]).absolute()),
                 "models": request["model_hashes"], "locks": request["lock_hashes"],
                 "protocol": "document-two-phase-v1"}
     generation = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()

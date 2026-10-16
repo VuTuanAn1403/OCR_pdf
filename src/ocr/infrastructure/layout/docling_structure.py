@@ -113,7 +113,7 @@ class DoclingStructureExtractor:
     def cache_fingerprint(self) -> str:
         digest = hashlib.sha256(json.dumps(self.options, sort_keys=True).encode())
         digest.update(SCHEMA_VERSION.encode())
-        digest.update(str(self.python.resolve()).encode())
+        digest.update(str(self.python.absolute()).encode())
         for path in (Path(__file__), docling_worker_path(),
                      ROOT / "requirements-docling.lock.txt", models_dir() / "docling/model_manifest.json"):
             if path.is_file():

@@ -40,7 +40,9 @@ def prepare_backend(config_path, profile, env_root, *, preflight=True):
     config["docling"]["device"] = "cuda"
     config["backend_devices"] = dict.fromkeys(("ocr_detection","ocr_recognition","layout","docling"),"cuda")
     suffix = "Scripts/python.exe" if os.name == "nt" else "bin/python"
-    interpreters = {f"{role}_python":str((Path(env_root)/role/suffix).resolve()) for role in ("text","docling")}
+    # Linux venv executables are symlinks. Resolving them launches the base
+    # interpreter and drops the worker's site-packages.
+    interpreters = {f"{role}_python":str((Path(env_root)/role/suffix).absolute()) for role in ("text","docling")}
     for python in interpreters.values():
         if not Path(python).is_file():
             raise FileNotFoundError(f"Missing locked GPU environment: {python}")

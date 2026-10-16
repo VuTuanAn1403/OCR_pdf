@@ -52,7 +52,8 @@ def main():
     config["docling"]["device"] = "cuda"
     config["backend_devices"] = dict.fromkeys(("ocr_detection", "ocr_recognition", "layout", "docling"), "cuda")
     suffix = "Scripts/python.exe" if os.name == "nt" else "bin/python"
-    text_python, docling_python = [str((args.env_root / role / suffix).resolve()) for role in ("text", "docling")]
+    # Keep the venv path: resolving a Linux python symlink loses its packages.
+    text_python, docling_python = [str((args.env_root / role / suffix).absolute()) for role in ("text", "docling")]
     for python in (text_python, docling_python):
         if not Path(python).is_file():
             raise FileNotFoundError(f"Run scripts/setup_v62.py first: {python}")

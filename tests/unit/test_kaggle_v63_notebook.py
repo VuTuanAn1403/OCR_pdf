@@ -154,6 +154,43 @@ def test_batch_command_uses_only_v63_options_and_recount_preserves_snapshot(tmp_
                                                "--output", str(scope["BATCH_DIR"]), "--recount"]
 
 
+def test_setup_refreshes_failed_checkout_before_batch_and_freezes_it_after_ledger(tmp_path):
+    scope, cells = namespace()
+    runtime, results = tmp_path / "runtime", tmp_path / "results"
+    key = hashlib.sha256((scope["REPO_URL"] + "\n" + scope["REPO_REF"]).encode()).hexdigest()[:12]
+    repo = runtime / ("source-" + key)
+    (repo / ".git").mkdir(parents=True)
+    (repo / "config").mkdir()
+    (repo / "config/profiles-v63.yaml").touch()
+    (repo / "config/keywords.txt").write_text("fixture", encoding="utf-8")
+    python = repo / ".venv/bin/python"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    commands, revision = [], ["fixed-commit"]
+    scope.update(RUNTIME_ROOT=runtime, RESULTS_DIR=results, LOG_DIR=results / "logs", BATCH_DIR=results / "documents",
+        INPUT_MAPPING=[{"document_id": "fixture"}], REFRESH_SOURCE=True, SYNC_GPU_ENVS=True,
+        sys=types.SimpleNamespace(platform="linux", executable=sys.executable),
+        shutil=types.SimpleNamespace(which=lambda _: sys.executable),
+        subprocess=types.SimpleNamespace(check_output=lambda command, **kwargs:
+            scope["REPO_URL"] if "get-url" in command else revision[0]),
+        run_logged=lambda command, *a, **kw: commands.append([str(value) for value in command]))
+    exec(cells["setup"], scope)
+    assert any("fetch" in command for command in commands)
+    assert any("--ff-only" in command for command in commands)
+    assert any("scripts/setup_v62.py" in command and "--sync" in command for command in commands)
+    settings = results / "run_settings.json"
+    assert json.loads(settings.read_text(encoding="utf-8"))["commit"] == "fixed-commit"
+    scope["BATCH_DIR"].mkdir()
+    (scope["BATCH_DIR"] / "batch_state.sqlite").touch()
+    commands.clear()
+    exec(cells["setup"], scope)
+    assert not any("fetch" in command or "merge" in command for command in commands)
+    revision[0] = "different-commit"
+    with pytest.raises(ValueError, match="Snapshot"):
+        exec(cells["setup"], scope)
+    assert json.loads(settings.read_text(encoding="utf-8"))["commit"] == "fixed-commit"
+
+
 def completed_fixture_batch(tmp_path):
     # Existing V6.3 fixture backend is explicitly synthetic, never GPU evidence.
     fixture = runpy.run_path(str(ROOT / "tests/unit/test_v63_pipeline.py"))

@@ -26,7 +26,9 @@ import json, sys
 from importlib import metadata
 device = sys.argv[1]
 require_ort = sys.argv[2] == "true"
-report = {"device": device, "packages": {}, "errors": []}
+report = {"device": device, "packages": {}, "errors": [],
+          "python_executable": sys.executable, "python_prefix": sys.prefix,
+          "python_base_prefix": sys.base_prefix}
 for name in ("onnxruntime", "onnxruntime-gpu", "rapidocr-onnxruntime", "torch", "docling-slim"):
     try: report["packages"][name] = metadata.version(name)
     except metadata.PackageNotFoundError: pass
