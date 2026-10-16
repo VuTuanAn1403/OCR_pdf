@@ -43,10 +43,10 @@ def main():
     record = {"schema_version": "v62-runtime-models-v1", "quality_acceptance": "NOT_EVALUATED",
               "purpose": "GPU integration candidate; model selection on GT remains pending",
               "snapshots": {k: {"repo": f"docling-project/{v[0]}", "revision": v[1]} for k,v in snapshots.items()},
-              "text_detector": {"adapter": "onnx-db-map-v1", "model_path": str(detector.relative_to(ROOT)),
+              "text_detector": {"adapter": "onnx-db-map-v1", "model_path": detector.relative_to(ROOT).as_posix(),
                                 "sha256": sha256(detector), "scope": "full_page", "max_side": 1536,
                                 "gpu_mem_limit_mb": 1024},
-              "layout_model": {"adapter": "hf_rtdetr_torch", "model_path": str(layout_path.relative_to(ROOT)),
+              "layout_model": {"adapter": "hf_rtdetr_torch", "model_path": layout_path.relative_to(ROOT).as_posix(),
                                "on_error": "raise", "render_dpi": 144},
               "files": {str(f.relative_to(ROOT).as_posix()): sha256(f) for f in files if f.is_file()}}
     path = folder / "runtime-models.json"

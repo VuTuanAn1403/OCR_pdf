@@ -28,3 +28,15 @@ Smoke bổ sung Docling qua hai tài liệu chưa được thực thi: automatic
 `remediation_20261015_continuation.json` ghi compact export, text-overlay fallback và sửa phép thử bảng scan, cùng hash riêng từng phép chạy. Bằng chứng trong `20261015_continuation/`: full suite cuối **601 passed, 3 skipped**, compact sequential/pool/resume (3 PDF native, 6 trang, giảm 37,88% payload), perf CLI compact exploratory, A replay trên OCR evidence BSI đã khóa (2.935 từ round-trip đúng trên 5 trang; vẫn cần review ô bảng). A/B giữ hai fingerprint vì bước chèn chữ được sửa sau B; chưa có GT/C, không tuyên bố phương án thắng hoặc đạt PERF.
 
 CI Windows/Linux đã sửa để cài `.[test]`; chưa có run GitHub Actions, Docker, GPU hay Colab mới. Chi tiết cục bộ tại `docs/V6_BO_SUNG_20261015.md`; docs tiếp tục bị ignore.
+
+## V6.3 — 17/10/2026
+
+Luồng mặc định đã chuyển sang OCR GPU mọi trang, keyword report chuẩn và xuất bản ma trận theo revision SQLite. Xem [hướng dẫn V6.3](../../README.md#5-chạy-pipeline-v63). Các bằng chứng V6.1/V6.2 phía trên vẫn giữ nguyên phạm vi và fingerprint lịch sử; không dùng chúng để chứng nhận đầu ra V6.3.
+
+[v63_integration_20261017.json](v63_integration_20261017.json) ghi fingerprint `31058032f02fb73e`, **789 kiểm tra đạt**, pilot GPU thật ba PDF dẫn xuất/bốn trang, kiểm đồng nhất JSON/Excel, commit tuần tự, resume và recount không OCR lại. Có recipe và hash PDF nguồn. Tất cả output pilot vẫn `NEEDS_REVIEW`, chất lượng nghiên cứu `NOT_EVALUATED`; các thời gian là quan sát tích hợp khi pytest chạy đồng thời.
+
+Kiểm thử quy mô logic 500 mục và workbook 500 × 88 không phải OCR 500 PDF thật. Kết quả nghiên cứu vẫn `NOT_EVALUATED` khi chưa có ground truth theo cùng quy tắc đếm.
+
+## Rà soát trước khi đưa dự án lên GitHub — 17/10/2026
+
+[project_review_20261017.json](project_review_20261017.json) ghi lần kiểm tra lại: unit/scientific 789 passed; integration/golden 5 passed, 3 skipped vì thiếu PDF/prediction. Smoke V6.3 chạy thật trên PDF mẫu một trang, kiểm ma trận và completion receipt, resume giữ nguyên 20 artifact, recount giữ nguyên Markdown/số đếm. Output mẫu vẫn `NEEDS_REVIEW`; đây không phải nghiệm thu chất lượng OCR hoặc chạy tải dài. Registry dùng đường dẫn POSIX để đọc được trên Windows/Linux; CI đã bổ sung dependency legacy và chuẩn bị VietOCR trước khi probe model. GitHub Actions chưa được xác nhận tại thời điểm ghi bản này.

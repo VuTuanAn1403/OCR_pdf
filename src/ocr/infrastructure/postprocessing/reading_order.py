@@ -12,7 +12,7 @@ class ReadingOrderSorter:
     multi-column detection, and header/footer separation.
     """
     def __init__(self, page_width: float = 595.0, page_height: float = 842.0,
-                 method: str = "heuristic", min_gap: float = 3.0, classify_furniture: bool = True):
+                 method: str = "heuristic", min_gap: float = 3.0, classify_furniture: bool = False):
         if method not in READING_ORDER_METHODS:
             raise ValueError(f"reading_order.method must be one of {', '.join(READING_ORDER_METHODS)}")
         self.page_width = page_width
@@ -44,14 +44,15 @@ class ReadingOrderSorter:
 
             x0, y0, x1, y1 = bbox
 
-            # Respect prior semantic classification from DLA if already set
-            if block.block_type == "header":
+            # Model labels are proposals until the document pass accepts them.
+            confirmed = self.classify_furniture or block.role_status == "ACCEPTED"
+            if confirmed and block.block_type in ("header", "running_header"):
                 headers.append(block)
                 continue
-            elif block.block_type == "footer":
+            elif confirmed and block.block_type in ("footer", "running_footer"):
                 footers.append(block)
                 continue
-            elif block.block_type == "page_number":
+            elif confirmed and block.block_type == "page_number":
                 page_numbers.append(block)
                 continue
 

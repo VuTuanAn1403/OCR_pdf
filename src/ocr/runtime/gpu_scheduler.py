@@ -162,7 +162,8 @@ def run_document(request, *, resume=False):
     output = Path(request["output"]) / Path(request["pdf"]).stem
     atomic_write_json(output / "gpu_scheduler.json", audit)
     from src.ocr.infrastructure.export.completion import mark_completed
-    mark_completed(output, json.loads((output / "validation.json").read_text(encoding="utf-8"))["status"])
+    if request.get("finalize_document", True):
+        mark_completed(output, json.loads((output / "validation.json").read_text(encoding="utf-8"))["status"])
     return {"output": str(output), "audit": str(audit_path), "generation": generation}
 
 

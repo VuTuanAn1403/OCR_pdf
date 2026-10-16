@@ -51,11 +51,28 @@ def run_text(request):
         files = []
         try:
             for page_num in sorted(set(pages)):
+                strict_ocr = config.get("ocr_source_policy") == "gpu_ocr_only_v1"
+                detector = processor.ocr_engine._detector
+                before_detection = getattr(detector, "inference_calls", 0)
+                before_recognition = sum(placement.counts.values())
                 page = processor.execute(page_num=page_num, total_pages=len(doc), router=router, resume=False)
                 # Real full-page detector probe on native pages as well. It is
                 # independent evidence, never a model-layout ROI gate.
-                detector = processor.ocr_engine._detector
-                detector.detect(processor.renderer.render_page(page_num, dpi=config["render_dpi"]))
+                if not strict_ocr:
+                    detector.detect(processor.renderer.render_page(page_num, dpi=config["render_dpi"]))
+                else:
+                    detection_calls = detector.inference_calls-before_detection
+                    recognition_calls = sum(placement.counts.values())-before_recognition
+                    if detection_calls < 1 or detector.last_detections and recognition_calls < 1:
+                        raise RuntimeError("Missing actual GPU OCR inference for document page")
+                    if any(b.source == "native" for b in page.blocks):
+                        raise RuntimeError("Native text leaked into GPU-only page output")
+                    page.metadata["gpu_ocr"] = {"scope":"all_pages", "source_policy":"gpu_ocr_only_v1",
+                        "detector_device":request["device"], "recognizer_device":request["device"],
+                        "detector_calls":detection_calls,"recognizer_forward_calls":recognition_calls,
+                        "detector_scope":"full_page","detector_input_shape":detector.last_input_shape,
+                        "render_dpi":config["render_dpi"],"workload":"document",
+                        "status":"OCR_PROCESSED" if detector.last_detections else "BLANK_NO_DETECTIONS"}
                 if page.quality.errors:
                     raise RuntimeError(f"Phase A page {page_num} has extraction errors; inspect the phase log")
                 page.metadata["runtime_phase"] = {"method": "document-two-phase-v1", "phase": "A",
@@ -66,13 +83,18 @@ def run_text(request):
             observed = placement.report()
             recognition_workload = "document"
             if observed["status"] != "VERIFIED_INFERENCE":
+                if config.get("ocr_source_policy") == "gpu_ocr_only_v1":
+                    # Truly blank inputs need no fictitious recognition call.
+                    observed["workload"] = "document_no_recognition_regions"
+                    recognition_workload = "document_no_recognition_regions"
+                else:
                 # A native-only input must still prove this backend can run.
-                from PIL import Image, ImageDraw
-                image = Image.new("RGB", (256, 40), "white")
-                ImageDraw.Draw(image).text((5, 5), "GPU OCR 123", fill="black")
-                processor.ocr_engine._recognizer.predict_batch([image], return_prob=True)
-                observed = placement.report(require_inference=True)
-                recognition_workload = "synthetic_backend_probe_native_only_document"
+                    from PIL import Image, ImageDraw
+                    image = Image.new("RGB", (256, 40), "white")
+                    ImageDraw.Draw(image).text((5, 5), "GPU OCR 123", fill="black")
+                    processor.ocr_engine._recognizer.predict_batch([image], return_prob=True)
+                    observed = placement.report(require_inference=True)
+                    recognition_workload = "synthetic_backend_probe_native_only_document"
             observed["workload"] = recognition_workload
             layout = processor.content_analyzer.dla_engine._torch_layout.placement
             if not layout:
@@ -103,9 +125,27 @@ def run_structure(request):
             for name in sorted(checkpoint["files"]):
                 page = ExtractedPage.model_validate(read(root / name))
                 before = time.perf_counter()
-                page.blocks, page.tables, page.formulas = ProcessPageUseCase._enrich_structures(
-                    context, pdf[page.page_num-1], page.page_num, page.page_type, page.blocks,
-                    page.tables, page.regions, page.metadata)
+                if request["config"].get("ocr_source_policy") == "gpu_ocr_only_v1":
+                    from src.ocr.infrastructure.pdf.ocr_bridge import ocr_bridge
+                    with ocr_bridge(pdf[page.page_num-1], page, request["config"]["render_dpi"]) as bridge:
+                        page.blocks, page.tables, page.formulas = ProcessPageUseCase._enrich_structures(
+                            context, bridge[0], page.page_num, page.page_type, page.blocks,
+                            page.tables, page.regions, page.metadata)
+                    page.metadata["ocr_structure_bridge"] = {"policy":"raster-plus-gpu-text-v1",
+                        "native_text_layer_copied":False,"generation":request["generation"]}
+                    for structure in [*page.tables,*page.formulas]:
+                        structure.provenance["text_source_policy"] = "gpu_ocr_only_v1"
+                        structure.provenance["bridge"] = "raster-plus-gpu-text-v1"
+                    for table in page.tables:
+                        # Embedded font cmaps may extract a space glyph as NBSP.
+                        # Undo that bridge encoding artifact; never change digits.
+                        for cell in table.cells:
+                            cell.text = cell.text.replace("\u00a0", " ")
+                        table.provenance["bridge_whitespace"] = "nbsp-to-ocr-space"
+                else:
+                    page.blocks, page.tables, page.formulas = ProcessPageUseCase._enrich_structures(
+                        context, pdf[page.page_num-1], page.page_num, page.page_type, page.blocks,
+                        page.tables, page.regions, page.metadata)
                 info = page.metadata["docling_structure"]
                 if info.get("status") not in ("success", "SKIPPED_NO_STRUCTURE_CANDIDATE") or info.get("errors"):
                     raise RuntimeError(f"Incomplete Docling phase B: {info}")
@@ -137,7 +177,8 @@ def run_export(request):
     counts = {"native": 0, "mixed": 0, "ocr": 0}
     for p in pages:
         kind = p.page_type.value
-        counts["native" if kind in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE") else "mixed" if kind == "MIXED" else "ocr"] += 1
+        counts["ocr" if request["config"].get("ocr_source_policy") == "gpu_ocr_only_v1" else
+               "native" if kind in ("NATIVE_TEXT", "PRODUCT_SHOWCASE_COLLAGE") else "mixed" if kind == "MIXED" else "ocr"] += 1
     quality = DocumentQualityReport(document_id=Path(request["pdf"]).stem, total_pages=a["total_pages"],
         mean_native_score=mean([p.quality.native_text_score for p in pages]) or 0,
         mean_ocr_confidence=mean([p.quality.ocr_confidence for p in pages]),
@@ -159,7 +200,7 @@ def run_export(request):
         "quality_acceptance": "NOT_EVALUATED"}
     output = ExportDocumentUseCase.execute(document, Path(request["output"]),
         assets_mode=request.get("assets", "png"), output_mode=request.get("output_mode", "compact"),
-        keywords_file=request.get("keywords_file"))
+        keywords_file=request.get("keywords_file"), count_keywords=request.get("finalize_document", True))
     validation = read(output / "validation.json")
     if validation["status"] == "FAIL":
         raise RuntimeError(f"Export validation failed: {validation['errors'][:5]}")

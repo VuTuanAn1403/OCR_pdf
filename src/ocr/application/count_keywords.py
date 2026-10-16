@@ -24,6 +24,13 @@ class CountKeywordsUseCase:
     @classmethod
     def execute(cls, doc_dir: Path, document_id: str,
                 keywords_file: str | Path | None = None) -> KeywordReport:
+        manifest_path = Path(doc_dir) / "manifest.json"
+        if manifest_path.is_file():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if (manifest.get("keyword_contract") or
+                    manifest.get("configuration", {}).get("ocr_source_policy") == "gpu_ocr_only_v1"):
+                raise ValueError("V6.3 recount requires the batch publication gate: "
+                                 f"run_batch.py --output {Path(doc_dir).parent} --recount")
         keywords = KeywordCounter.load_keywords(cls.resolve_keywords_file(keywords_file))
         source = Path(doc_dir) / "result.md"
         report = KeywordCounter.count_keywords(source.read_text(encoding="utf-8-sig"), keywords,

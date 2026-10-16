@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ocr-pdf"
 dynamic = ["version"]
-description = "Vietnamese PDF to Markdown/JSON extraction: native-first routing, VietOCR fallback, Docling tables and formulas"
+description = "Vietnamese full-page GPU OCR with Docling structures, per-document keyword Excel and a durable batch matrix"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 # Keep in sync with requirements.txt (the lock used by setup scripts).
@@ -40,11 +40,11 @@ research = ["apted>=1.0.3", "scipy>=1.10,<2.0", "beautifulsoup4>=4.12,<5.0", "py
 # Install editable (`pip install -e .`): the code resolves config/, models/
 # and the Docling worker relative to the repository checkout.
 [project.scripts]
-ocrpdf = "src.ocr.cli.run_ocr:main"
-ocrpdf-batch = "src.ocr.cli.batch_runner:main"
+ocrpdf = "src.ocr.cli.unified:run_one"
+ocrpdf-batch = "src.ocr.cli.unified:run_batch"
 ocrpdf-perf = "benchmark.perf.run_perf:main"
 ocrpdf-collect = "src.ocr.cli.collect:main"
-ocrpdf-gpu = "src.ocr.cli.gpu_runner:main"
+ocrpdf-gpu = "src.ocr.cli.unified:run_one"
 
 [tool.setuptools.dynamic]
 version = { attr = "src.ocr.infrastructure.export.manifest_exporter.PIPELINE_VERSION" }

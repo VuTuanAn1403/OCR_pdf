@@ -36,6 +36,7 @@ class ExportDocumentUseCase:
         output_mode: str = "legacy",
         document_layout: Optional[Dict[str, Any]] = None,
         keywords_file: Optional[str] = None,
+        count_keywords: bool = True,
     ) -> Path:
         if assets_mode not in ASSET_MODES:
             raise ValueError(f"Unknown assets_mode '{assets_mode}'. Use one of: {', '.join(ASSET_MODES)}")
@@ -57,7 +58,7 @@ class ExportDocumentUseCase:
 
         cls._export_image_assets(doc, doc_dir, assets_mode)
 
-        from src.ocr.runtime.config import document_layout_settings
+        from src.ocr.runtime.config import document_layout_settings, furniture_settings
         configured = doc.manifest.get("configuration", {})
         if document_layout is not None:
             requested_layout = document_layout
@@ -67,23 +68,30 @@ class ExportDocumentUseCase:
             resolved = doc.manifest.get("document_layout", {})
             requested_layout = resolved.get("settings", {"method": resolved.get("method", "legacy")})
         settings = document_layout_settings({"document_layout": requested_layout})
+        from src.ocr.infrastructure.postprocessing.page_association import ALGORITHM_VERSION
         modern = settings["method"] == "region_tree_graph_v1"
         if modern and (doc.manifest.get("document_layout", {}).get("method") != settings["method"]
-                       or doc.manifest.get("document_layout", {}).get("settings") != settings):
+                       or doc.manifest.get("document_layout", {}).get("settings") != settings
+                       or doc.manifest.get("furniture", {}).get("method") != furniture_settings(settings)["method"]
+                       or doc.manifest.get("furniture", {}).get("algorithm_version") != ALGORITHM_VERSION):
             from src.ocr.application.resolve_document_layout import resolve_document_layout
             resolve_document_layout(doc, settings)
         if not modern:
             if any("ordered_item_ids" in p.metadata for p in doc.pages):
                 raise ValueError("Legacy export requires original page evidence; cannot reuse a finalized region-tree document")
-            doc.manifest["document_layout"] = {"method": "legacy", "algorithm_version": "legacy-v6.1"}
-            cls._detect_running_headers_and_footers(doc)
-            # A reused output directory must not advertise stale opt-in sidecars.
-            for name in ("layout_order.json", "furniture.json"):
-                (doc_dir / name).unlink(missing_ok=True)
+            doc.manifest["document_layout"] = {"method": "legacy", "algorithm_version": "legacy-v6.1", "settings": settings}
+            from src.ocr.application.resolve_document_furniture import resolve_document_furniture
+            resolve_document_furniture(doc, settings)
+            # The selected legacy reading order does not produce a region tree.
+            (doc_dir / "layout_order.json").unlink(missing_ok=True)
         else:
             doc.manifest["output_contract"]["schema_version"] = "output-v6.2-layout"
         if modern:
             cls._export_layout_sidecars(doc, doc_dir)
+        if doc.manifest.get("furniture", {}).get("method") == "document_context_v3":
+            cls._export_furniture_sidecar(doc, doc_dir)
+        else:
+            (doc_dir / "furniture.json").unlink(missing_ok=True)
 
         # 1. Export per-page artifacts (suppress running headers/footers in Markdown by default)
         for p in doc.pages:
@@ -146,7 +154,7 @@ class ExportDocumentUseCase:
             doc.manifest["output_contract"]["markdown_sha256"] = hashlib.sha256(markdown_path.read_bytes()).hexdigest()
         JSONExporter.save_json(doc.manifest, doc_dir / "manifest.json")
 
-        validation = validate_document_artifacts(doc_dir)
+        validation = validate_document_artifacts(doc_dir, include_keywords=count_keywords)
         JSONExporter.save_json(validation, doc_dir / "validation.json")
         if validation["status"] == "FAIL":
             cause = _structure_error(doc_dir)
@@ -154,7 +162,8 @@ class ExportDocumentUseCase:
                              + (f"; structure step error: {cause}" if cause else ""))
 
         from src.ocr.application.count_keywords import CountKeywordsUseCase
-        CountKeywordsUseCase.execute(doc_dir, doc.document_id, keywords_file)
+        if count_keywords:
+            CountKeywordsUseCase.execute(doc_dir, doc.document_id, keywords_file)
         return doc_dir
 
     @staticmethod
@@ -164,10 +173,14 @@ class ExportDocumentUseCase:
                 "logical_page_id", "physical_page_id", "layout_family", "article_groups", "layout_tree",
                 "ordered_item_ids", "ordered_source_ids", "item_assignments", "layout_review", "source_identity")}}
             for p in doc.pages]}, doc_dir / "layout_order.json")
+
+    @staticmethod
+    def _export_furniture_sidecar(doc, doc_dir):
+        from src.ocr.infrastructure.structure.ids import page_items
         JSONExporter.save_json({"schema_version": "furniture-v1", **doc.manifest.get("furniture", {}),
-            "pages": [{"page": p.page_num, "items": [b.to_dict() for b in p.blocks
-                if b.role_status == "NEEDS_REVIEW" or b.protected_from_furniture or b.role_final in (
-                    "header", "footer", "running_header", "running_footer", "page_number")]} for p in doc.pages]},
+            "pages": [{"page": p.page_num, "items": [{"id": item.id, **item.block.to_dict()}
+                for item in page_items(doc.file_hash, p) if item.block is not None and (
+                    item.block.role_reasons or item.block.protected_from_furniture)]} for p in doc.pages]},
             doc_dir / "furniture.json")
 
     @staticmethod

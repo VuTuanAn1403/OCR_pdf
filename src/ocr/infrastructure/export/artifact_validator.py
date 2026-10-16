@@ -4,6 +4,7 @@ import json
 import hashlib
 import re
 import unicodedata
+from zipfile import BadZipFile
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -20,11 +21,15 @@ _HTML_TABLE = re.compile(r"</?(?:table|thead|tbody|tr|td|th)\b", re.IGNORECASE)
 
 
 def validate_document_artifacts(
-    doc_dir: Path, ground_truth_manifest: Path | None = None
+    doc_dir: Path, ground_truth_manifest: Path | None = None, *, include_keywords: bool = True
 ) -> Dict[str, Any]:
     try:
-        return _validate_document_artifacts(Path(doc_dir), ground_truth_manifest)
-    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        result = _validate_document_artifacts(Path(doc_dir), ground_truth_manifest)
+        if include_keywords and (Path(doc_dir)/"manifest.json").is_file():
+            from src.ocr.infrastructure.export.keyword_validator import validate_keyword_artifacts
+            validate_keyword_artifacts(Path(doc_dir), json.loads((Path(doc_dir)/"manifest.json").read_text(encoding="utf-8")))
+        return result
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, BadZipFile) as exc:
         return {"status": "FAIL", "counts": {}, "warnings": [],
                 "errors": [f"Artifact data cannot be read or is malformed ({type(exc).__name__}): {exc}"]}
 

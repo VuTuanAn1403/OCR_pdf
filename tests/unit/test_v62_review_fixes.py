@@ -108,12 +108,14 @@ def test_export_switch_versions_sidecars_and_mermaid(tmp_path, modern, storage_m
         assert text.count("```mermaid") == (1 if modern or name != "document.md" else 0)
         assert "Chữ nguồn vẫn được giữ." in text
     assert (out / "layout_order.json").exists() == modern
-    assert (out / "furniture.json").exists() == modern
+    # Furniture evidence is now independent of the reading-order method.
+    assert (out / "furniture.json").exists()
     source = json.loads((out / "extraction.json").read_text(encoding="utf-8"))
     document = json.loads((out / "document.json").read_text(encoding="utf-8"))
     structure = json.loads((out / "structure.json").read_text(encoding="utf-8"))
     assert source["schema_version"] == ("extraction-v2-layout" if modern else "extraction-v1")
-    assert source["pipeline_version"] == "6.2.0.dev2"
+    from src.ocr.infrastructure.export.manifest_exporter import PIPELINE_VERSION
+    assert source["pipeline_version"] == PIPELINE_VERSION
     assert validate_contract_set(source, document, structure) == []
     assert validate_document_artifacts(out)["status"] != "FAIL"
     if modern:
@@ -184,11 +186,12 @@ def test_opt_in_dla_does_not_label_invalid_roman_text_as_pagination(text):
     assert label != "page_number"
 
 
-@pytest.mark.parametrize("text", ["IV", "xii", "Trang IV", "Trang 12/100"])
-def test_valid_page_number_forms_move_to_metadata(text):
-    doc = make_doc([[b(text, [40, 810, 100, 824])]])
+@pytest.mark.parametrize("sequence", [["IV", "V", "VI"], ["xii", "xiii", "xiv"],
+    ["Trang IV", "Trang V", "Trang VI"], ["Trang 12/100", "Trang 13/100", "Trang 14/100"]])
+def test_valid_page_number_sequences_move_to_metadata(sequence):
+    doc = make_doc([[b(text, [40, 810, 100, 824], n)] for n, text in enumerate(sequence, 1)])
     resolve_document_layout(doc)
-    assert doc.pages[0].blocks[0].block_type == "page_number"
+    assert all(page.blocks[0].block_type == "page_number" for page in doc.pages)
 
 
 def test_profile_defaults_are_legacy_and_invalid_settings_are_rejected():
@@ -216,6 +219,10 @@ def test_legacy_export_preserves_selected_sorter_and_removes_stale_sidecars(tmp_
     assert (out / "furniture.json").exists()
     legacy = make_doc(copy.deepcopy([blocks]))
     ExportDocumentUseCase.execute(legacy, tmp_path / "reuse", assets_mode="none")
+    assert json.loads((out / "furniture.json").read_text(encoding="utf-8"))["method"] == "document_context_v3"
+    frozen = make_doc(copy.deepcopy([blocks]))
+    ExportDocumentUseCase.execute(frozen, tmp_path / "reuse", assets_mode="none",
+        document_layout={"method": "legacy", "furniture": {"method": "legacy_v6_1"}})
     assert not (out / "furniture.json").exists()
 
 

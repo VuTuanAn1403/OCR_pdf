@@ -1,8 +1,8 @@
 """Single document-context authority for running furniture decisions.
 
-Conservative baseline: exact NFC/case/whitespace matching with stable geometry,
-distinct physical pages and local template support. No OCR correction, digit
-erasure or independent title suppression happens here.
+Content guards precede cross-page token association. The learned templates,
+region boundaries and pagination offsets remain inspectable; OCR text is never
+rewritten to make a template match.
 """
 from __future__ import annotations
 
@@ -11,17 +11,19 @@ import json
 import re
 import unicodedata
 import statistics
-from collections import defaultdict
 
 from src.ocr.infrastructure.structure.source_identity import valid_bbox
+from src.ocr.infrastructure.postprocessing.page_association import Occurrence, PageAssociation
 
-METHOD = "document_context_v2"
+METHOD = "document_context_v3"
 _UNIT = re.compile(r"^\s*(đơn vị tính|đvt)\s*[:：]", re.I)
 _CONTINUED = re.compile(r"\(\s*tiếp(?:\s+theo)?\s*\)", re.I)
-_SECTION = re.compile(r"^\s*(?:(?:chương|phần|mục|điều|phụ lục)\b|\d+(?:\.\d+)*[.)]\s|[IVXLC]+[.)]\s)", re.I)
+_SECTION = re.compile(r"^\s*(?:(?:chương|phần|mục|điều|phụ lục)\b|\d+(?:\.\d+)*[.)]\s|\d+(?:\.\d+)+\s|[IVXLCDM]+[.)]\s|[A-Z][.)]\s)", re.I)
 _ROMAN = r"M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})"
 _PAGE = re.compile(r"^(?:trang\s+)?(?:\d{1,4}|(?=[ivxlcdm])" + _ROMAN + r")(?:\s*/\s*\d{1,4})?$", re.I)
-_LABELLED_PAGE = re.compile(r"\btrang\s+\d{1,4}(?:\s*/\s*\d{1,4})?\b", re.I)
+_LIST = re.compile(r"^\s*(?:[-*•–+]|\(\d+\)|\d+\))\s+")
+_CAPTION = re.compile(r"^\s*(?:hình|bảng|ảnh|sơ đồ|biểu đồ|figure|table|fig\.)\s+\d+[:.\-]", re.I)
+_PROPOSALS = {"header", "footer", "running_header", "running_footer", "page_number"}
 
 
 def is_page_number_text(text):
@@ -29,9 +31,8 @@ def is_page_number_text(text):
 
 
 def _key(text):
-    # Only a labelled page number is variable. Years/codes remain significant.
-    text = _LABELLED_PAGE.sub("trang #", unicodedata.normalize("NFC", text).casefold())
-    return " ".join(text.split())
+    # A variable number is normalized only AFTER a pagination sequence fits.
+    return " ".join(unicodedata.normalize("NFC", text).casefold().split())
 
 
 def protect_table_continuation_lines(pages):
@@ -53,15 +54,19 @@ def protect_table_continuation_lines(pages):
 
 
 class DocumentFurnitureResolver:
-    def __init__(self, *, min_pages=3, window=12, support_ratio=.6, position_tolerance=.025):
-        if min_pages < 3 or window < min_pages or not 0 < support_ratio <= 1 or position_tolerance <= 0:
-            raise ValueError("Invalid furniture evidence thresholds")
-        self.min_pages, self.window = min_pages, window
-        self.support_ratio, self.position_tolerance = support_ratio, position_tolerance
+    def __init__(self, *, min_pages=3, window=12, support_ratio=.6, position_tolerance=.025, edge_ratio=.20,
+                 token_similarity_threshold=.96, learning_pages=20):
+        from src.ocr.runtime.config import furniture_settings
+        parameters = furniture_settings({"furniture": dict(min_pages=min_pages, window=window,
+            support_ratio=support_ratio, position_tolerance=position_tolerance, edge_ratio=edge_ratio,
+            token_similarity_threshold=token_similarity_threshold, learning_pages=learning_pages)})
+        for name, value in parameters.items():
+            if name != "method":
+                setattr(self, name, value)
 
     def resolve(self, doc):
         protect_table_continuation_lines(doc.pages)
-        groups = defaultdict(list)
+        occurrences = []
         context = []
         for page in doc.pages:
             body_sizes = [b.font_size for b in page.blocks if b.font_size and len(b.text.strip()) >= 30]
@@ -75,12 +80,22 @@ class DocumentFurnitureResolver:
                 block.block_type = block.role_initial
                 if block.block_type in ("running_header", "running_footer"):
                     block.block_type = block.block_type.removeprefix("running_")
+                semantic = block.role_initial in _PROPOSALS
+                # An initial model/old-margin label is evidence, not authority
+                # to remove content. Keep it in role_initial for the audit.
+                if semantic:
+                    block.block_type = ("caption" if _CAPTION.search(block.text) else
+                                        "list" if _LIST.search(block.text) else
+                                        "section_header" if _SECTION.search(block.text) else "paragraph")
                 block.role_final, block.role_source = block.block_type, METHOD
-                block.role_status, block.visibility = "KEPT", "visible"
+                block.role_status, block.visibility = ("NEEDS_REVIEW" if semantic else "KEPT"), "visible"
                 block.suppression_reason, block.template_id = None, None
                 block.support_page_ids, block.role_reasons = [], []
                 block.review_reason_codes = [c for c in block.review_reason_codes
                                              if c not in ("HEADER_BODY_CONFLICT", "PAGE_NUMBER_BODY_CONFLICT")]
+                if semantic:
+                    block.role_reasons = ["UNCONFIRMED_FURNITURE_PROPOSAL"]
+                    block.review_reason_codes.append("PAGE_NUMBER_BODY_CONFLICT" if block.role_initial == "page_number" else "HEADER_BODY_CONFLICT")
                 context.append((physical, logical, block.source_id, block.text,
                                 block.bbox, block.role_initial, block.protected_from_furniture,
                                 block.font_size, block.is_bold, page.width, page.height))
@@ -88,104 +103,57 @@ class DocumentFurnitureResolver:
                     if block.block_type in ("header", "footer", "page_number"):
                         block.block_type = "paragraph"
                     block.role_final = block.block_type
+                    block.role_status = "KEPT"
+                    block.review_reason_codes = [c for c in block.review_reason_codes
+                                                 if c not in ("HEADER_BODY_CONFLICT", "PAGE_NUMBER_BODY_CONFLICT")]
                     block.role_reasons = [block.protection_reason]
                     continue
-                if block.block_type == "page_number" and not is_page_number_text(block.text):
+                if block.role_initial == "page_number" and not is_page_number_text(block.text):
                     # A coarse/model label must not hide a stock code or word
                     # that fails the actual pagination syntax.
                     block.block_type = block.role_final = "paragraph"
                     block.role_status = "NEEDS_REVIEW"
                     block.role_reasons = ["INVALID_PAGE_NUMBER_TEXT"]
-                    block.review_reason_codes.append("PAGE_NUMBER_BODY_CONFLICT")
                     continue
                 if not valid_bbox(block.bbox) or page.height <= 0 or page.width <= 0:
                     continue
                 mid = (block.bbox[1] + block.bbox[3]) / (2 * page.height)
-                edge = "header" if mid <= .20 else "footer" if mid >= .80 else None
-                semantic = block.block_type in ("header", "footer", "page_number")
+                # Candidate search band, never a decision to suppress text.
+                edge = "header" if mid <= self.edge_ratio else "footer" if mid >= 1 - self.edge_ratio else None
                 styled = bool(block.is_bold or (body_size and block.font_size and block.font_size >= 1.25 * body_size))
                 heading = bool(mid <= .15 and (styled or block.block_type in ("title", "section_header")))
-                if (block.block_type in ("footnote", "caption", "formula", "table_cell")
-                        or _SECTION.search(block.text) or block.block_type in ("title", "section_header") and not heading):
-                    if semantic:
-                        block.block_type = block.role_final = "paragraph"
-                        block.role_status = "NEEDS_REVIEW"
-                        block.review_reason_codes.append("HEADER_BODY_CONFLICT")
+                if (block.block_type in ("footnote", "caption", "formula", "table_cell", "list", "list_item")
+                        or _SECTION.search(block.text) or _LIST.search(block.text) or _CAPTION.search(block.text)
+                        or block.block_type in ("title", "section_header") and not heading):
+                    block.role_reasons = ["CONTENT_ROLE_PROTECTED"]
                     continue
                 if edge and is_page_number_text(block.text):
-                    # Unlabelled four-digit values can be years/business data.
                     bare = block.text.strip()
-                    if semantic or bare.lower().startswith("trang") or (mid <= .06 or mid >= .94) and not re.fullmatch(r"\d{4}", bare):
-                        block.block_type = block.role_final = "page_number"
-                        block.visibility, block.role_status = "metadata", "ACCEPTED"
-                        block.role_reasons = ["PAGE_NUMBER_PATTERN_AT_EDGE"]
+                    if not re.fullmatch(r"\d{4}", bare):
+                        occurrences.append(Occurrence(page, block, physical, logical, edge, False, _key(block.text)))
+                        block.role_reasons.append("PAGE_NUMBER_SEQUENCE_CANDIDATE")
                     continue
-                role = block.block_type if block.block_type in ("header", "footer") else edge
+                role = edge
                 if not role or len(block.text.strip()) < 4 or len(block.text) > 160 or len(block.text.splitlines()) > 2:
                     continue
-                # A semantic proposal can lie outside the initial margin band.
-                key = _key(block.text)
-                groups[(role, key, heading)].append((page, block, physical, logical, mid,
-                                           block.bbox[0] / page.width,
-                                           (block.bbox[3] - block.bbox[1]) / page.height,
-                                           block.font_size, bool(block.is_bold)))
-                block.role_reasons = ["FURNITURE_CANDIDATE"]
-        for (role, key, heading), occurrences in groups.items():
-            for page, block, physical, logical, mid, left, height, font, bold in occurrences:
-                semantic = block.role_initial in ("header", "footer", "page_number", "running_header", "running_footer")
-                compatible = [o for o in occurrences if abs(o[4] - mid) <= self.position_tolerance
-                         and abs(o[5] - left) <= self.position_tolerance
-                         and abs(o[6] - height) <= .01
-                         and (not heading or o[8] == bold and (font is None and o[7] is None
-                              or font is not None and o[7] is not None and abs(font - o[7]) <= max(.5, .05 * font)))]
-                local = [o for o in compatible if abs(o[0].page_num - page.page_num) <= self.window]
-                # Try full template first, then parity template. Subpages on the
-                # same physical sheet never inflate independent support.
-                accepted = []
-                for parity in (None, page.page_num % 2):
-                    support = [o for o in local if parity is None or o[0].page_num % 2 == parity]
-                    if not support:
-                        continue
-                    low, high = min(o[0].page_num for o in support), max(o[0].page_num for o in support)
-                    eligible = {str(p.metadata.get("physical_page_id", f"p{p.page_num:04d}")) for p in doc.pages
-                                if low <= p.page_num <= high and (parity is None or p.page_num % 2 == parity)}
-                    distinct = {o[2] for o in support}
-                    if len(distinct) >= self.min_pages and len(distinct) / max(1, len(eligible)) >= self.support_ratio:
-                        accepted = support
-                        break
-                if accepted:
-                    # Repeated section titles keep the first actual section
-                    # heading. Only subsequent same-style margin occurrences
-                    # become running furniture; numbered/body headings stay out.
-                    if heading:
-                        segments = []
-                        for number in sorted({o[0].page_num for o in compatible}):
-                            if not segments or number - segments[-1][-1] > 4:
-                                segments.append([number])
-                            else:
-                                segments[-1].append(number)
-                        anchor = next(s[0] for s in segments if page.page_num in s)
-                        if page.page_num == anchor:
-                            block.role_reasons = ["REPEATED_SECTION_TITLE_ANCHOR", "STABLE_STYLE"]
-                            block.support_page_ids = sorted({o[3] for o in accepted})
-                            continue
-                    block.block_type = block.role_final = f"running_{role}"
-                    block.visibility, block.role_status = "suppressed", "ACCEPTED"
-                    block.suppression_reason = "DISTINCT_PAGE_TEMPLATE_REPEAT"
-                    block.support_page_ids = sorted({o[3] for o in accepted})
-                    block.role_reasons = ["EXACT_TEXT", "STABLE_GEOMETRY", "DISTINCT_PHYSICAL_PAGES"]
-                    block.template_id = hashlib.sha256(f"{role}:{key}:{round(mid, 2)}:{round(left, 2)}".encode()).hexdigest()[:16]
-                elif semantic and len({o[2] for o in occurrences}) >= self.min_pages and len({o[2] for o in compatible}) < self.min_pages:
-                    block.role_status = "NEEDS_REVIEW"
-                    block.review_reason_codes.append("HEADER_BODY_CONFLICT")
+                # A model proposal never bypasses these candidate checks.
+                occurrences.append(Occurrence(page, block, physical, logical, role, heading, _key(block.text)))
+                block.role_reasons.append("FURNITURE_CANDIDATE")
+        association = PageAssociation(doc, min_pages=self.min_pages, window=self.window, support_ratio=self.support_ratio,
+            position_tolerance=self.position_tolerance, token_similarity_threshold=self.token_similarity_threshold,
+            learning_pages=self.learning_pages).resolve(occurrences)
         parameters = {"min_pages": self.min_pages, "window": self.window, "support_ratio": self.support_ratio,
-                      "position_tolerance": self.position_tolerance}
-        payload = json.dumps({"evidence": context, "method": METHOD, "parameters": parameters}, ensure_ascii=False, sort_keys=True)
-        report = {"method": METHOD,
+                      "position_tolerance": self.position_tolerance, "edge_ratio": self.edge_ratio,
+                      "token_similarity_threshold": self.token_similarity_threshold, "learning_pages": self.learning_pages}
+        payload = json.dumps({"evidence": context, "method": METHOD, "algorithm_version": association["algorithm_version"],
+                              "parameters": parameters}, ensure_ascii=False, sort_keys=True)
+        report = {"method": METHOD, **association,
                   "context_scope": "full_document" if {p.page_num for p in doc.pages} == set(range(1, doc.total_pages + 1)) else "selected_pages",
                   "context_page_ids": [str(p.metadata.get("logical_page_id", f"p{p.page_num:04d}")) for p in doc.pages],
                   "context_hash": hashlib.sha256(payload.encode()).hexdigest(),
                   "quality_acceptance": "NOT_EVALUATED",
+                  "research_basis": ["https://aclanthology.org/2020.finnlp-1.11/"],
+                  "implementation": "conservative_adaptation_not_paper_reproduction",
                   "parameters": parameters}
         doc.manifest["furniture"] = report
         return report

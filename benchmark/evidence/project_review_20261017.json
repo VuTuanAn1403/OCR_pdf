@@ -1,0 +1,72 @@
+{
+  "schema_version": "project-review-v1",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "pipeline_version": "6.3.0.dev1",
+  "source_fingerprint": "31058032f02fb73e",
+  "model_registry_sha256": "1b50ad30b07c59fb872349f2f05020bfa86adde905be01566a2021971f66630a",
+  "tests": {
+    "unit_scientific": {
+      "tests": 789,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time": 110.175,
+      "junit_sha256": "9157909fbce5065df54367fdcdc392a992dc8ec2c4abbce9039ddc9f30850e36",
+      "passed": 789
+    },
+    "integration_golden": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3,
+      "time": 27.616,
+      "junit_sha256": "e245823177d9d59e46e78b7090381235f7b8088e76d867036a5dc012487e800f",
+      "passed": 5
+    }
+  },
+  "gpu_smoke": {
+    "input": "examples/sample.pdf",
+    "pdf_sha256": "1e1a3fa175738fc7cf5ea5ecb076b73d422554b713a5496b5f7a3a427b796b4e",
+    "pages": 1,
+    "outcome": "SUCCEEDED",
+    "validation": "NEEDS_REVIEW",
+    "gpu_ocr": {
+      "scope": "all_pages",
+      "source_policy": "gpu_ocr_only_v1",
+      "detector_device": "cuda",
+      "recognizer_device": "cuda",
+      "detector_calls": 1,
+      "recognizer_forward_calls": 2215,
+      "detector_scope": "full_page",
+      "detector_input_shape": [
+        2105,
+        1488,
+        3
+      ],
+      "render_dpi": 180,
+      "workload": "document",
+      "status": "OCR_PROCESSED"
+    },
+    "completion_verified": true,
+    "matrix_verified": true,
+    "resume_artifacts_unchanged": 20,
+    "resume_revision_unchanged": true,
+    "recount_ocr_markdown_unchanged": true,
+    "recount_counts_unchanged": true,
+    "initial_revision": 1,
+    "recount_revision": 2,
+    "output_directory": "output/readme_v63_check"
+  },
+  "review_fixes": [
+    "Install legacy dependencies in CI and prepare VietOCR before model probing",
+    "Use POSIX model registry paths on Windows and Linux",
+    "Rewrite README for the current CLI and remove unavailable documentation links"
+  ],
+  "limitations": [
+    "Local Windows verification; GitHub Actions not yet verified",
+    "Three integration/golden tests skipped because BHN/CLW inputs or predictions are unavailable",
+    "No independent human-annotated OCR accuracy acceptance or real 500-PDF soak test"
+  ],
+  "quality_acceptance": "NOT_EVALUATED"
+}

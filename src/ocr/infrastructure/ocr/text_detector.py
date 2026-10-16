@@ -71,6 +71,7 @@ class ONNXTextDetector:
             raise ValueError("DB map contract requires one float NCHW input and one probability-map output")
         self.input_name, self.output_name = inputs[0].name, outputs[0].name
         self.last_detections, self.placement = [], None
+        self.inference_calls = 0
 
     def prepare(self, image):
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
@@ -123,6 +124,8 @@ class ONNXTextDetector:
         return sorted(detections, key=lambda d: (d["bbox"][1], d["bbox"][0], d["bbox"][3], d["bbox"][2]))
 
     def detect(self, image):
+        self.inference_calls += 1
+        self.last_input_shape = list(image.shape)
         tensor, geometry = self.prepare(image)
         output = self.session.run([self.output_name], {self.input_name: tensor})[0]
         self.last_detections = self.decode(output, geometry)

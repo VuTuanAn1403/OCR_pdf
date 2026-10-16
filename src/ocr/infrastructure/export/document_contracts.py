@@ -206,11 +206,14 @@ def _section_extents(structure: DocStructure) -> Dict[int, int]:
     return last_page
 
 
-def build_structure_json(doc: ExtractedDocument, structure: DocStructure) -> Dict[str, Any]:
+def build_structure_json(doc: ExtractedDocument, structure: DocStructure, consumed: Optional[Set[str]] = None) -> Dict[str, Any]:
     extents = _section_extents(structure)
     toc = structure.toc
-    reasons = dict(structure.dropped)
-    reasons.update({item_id: "duplicate_formula" for item_id in _duplicate_formula_blocks(structure)})
+    consumed_set = set(consumed) if consumed else set()
+    reasons = {k: v for k, v in dict(structure.dropped).items() if k not in consumed_set}
+    for item_id in _duplicate_formula_blocks(structure):
+        if item_id not in consumed_set:
+            reasons[item_id] = "duplicate_formula"
     dropped = sorted(reasons.items())
     return {
         "schema_version": _schema(doc, SCHEMA_STRUCTURE), "doc_sha16": doc.file_hash,
@@ -557,9 +560,12 @@ def write_document_contracts(doc: ExtractedDocument, doc_dir: Path, assets_mode:
     JSONExporter.save_json(build_extraction_json(doc, items_by_page, device), doc_dir / "extraction.json")
     try:
         layout_method = doc.manifest.get("document_layout", {}).get("method", "legacy")
-        structure = build_structure(items_by_page) if layout_method == "legacy" else build_structure(items_by_page, layout_method=layout_method)
-        structure_json = build_structure_json(doc, structure)
+        structure = build_structure(items_by_page, layout_method=layout_method,
+                                    furniture_method=doc.manifest.get("furniture", {}).get("method"))
         document_json = build_document_json(doc, structure, device)
+        consumed = {ref for section in document_json.get("sections", []) for span in section.get("spans", []) for ref in span.get("block_ids", [])}
+        consumed.update(ref for chunk in document_json.get("chunks", []) for span in chunk.get("spans", []) for ref in span.get("block_ids", []))
+        structure_json = build_structure_json(doc, structure, consumed=consumed)
         markdown = render_document_md(doc, structure, assets_mode)
     except Exception as exc:  # recorded for validation; see docstring
         logger.exception("Structure step failed for %s", doc.document_id)

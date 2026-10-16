@@ -115,6 +115,7 @@ inputs/*
 !inputs/.gitkeep
 
 output/*
+/output_finsbd/
 !output/.gitkeep
 !examples/**
 !sample.pdf

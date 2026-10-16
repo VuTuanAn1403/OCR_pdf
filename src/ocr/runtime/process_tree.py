@@ -56,11 +56,17 @@ class ProcessTree:
                 self.seen[proc.pid] = proc.create_time()
         except psutil.NoSuchProcess:
             pass
+        except psutil.AccessDenied:
+            # Windows can deny OpenProcess briefly while a process exits.
+            if self.process.poll() is None:
+                raise
 
     def close(self):
         self.observe()
-        if self.job:
-            self.kernel.TerminateJobObject(self.job, 1)
+        job_owned = bool(self.job)
+        if job_owned:
+            if not self.kernel.TerminateJobObject(self.job, 1):
+                raise OSError(ctypes.get_last_error(), "Cannot terminate phase job")
             self.kernel.CloseHandle(self.job)
             self.job = None
         elif os.name != "nt":
@@ -68,13 +74,18 @@ class ProcessTree:
                 os.killpg(self.process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
-        for pid, created in self.seen.items():
+        # The Windows job already terminates every descendant using its owned
+        # handle. Reopening each dying PID to kill it races with kernel teardown
+        # and can report AccessDenied even though termination succeeded.
+        for pid, created in (() if job_owned else self.seen.items()):
             try:
                 proc = psutil.Process(pid)
                 if proc.create_time() == created:
                     proc.kill()
             except psutil.NoSuchProcess:
                 pass
+            except psutil.AccessDenied:
+                pass  # The survivor check below must confirm exit.
         self.process.wait(timeout=15)
         deadline = time.monotonic() + 15
         while self.survivors() and time.monotonic() < deadline:
@@ -91,6 +102,8 @@ class ProcessTree:
                     alive.append(pid)
             except psutil.NoSuchProcess:
                 pass
+            except psutil.AccessDenied:
+                alive.append(pid)  # Never declare an uninspectable PID exited.
         return alive
 
 

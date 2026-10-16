@@ -277,7 +277,7 @@ def test_export_writes_contracts_and_validator_catches_dangling_ids(tmp_path):
 
 
 def test_structure_failure_preserves_evidence_but_fails_complete_v6_export(tmp_path, monkeypatch):
-    def broken(_items):
+    def broken(_items, **_settings):
         raise RuntimeError("boom")
 
     monkeypatch.setattr("src.ocr.infrastructure.export.document_contracts.build_structure", broken)

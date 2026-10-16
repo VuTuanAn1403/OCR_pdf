@@ -1,0 +1,43 @@
+profiles:
+  unified_gpu_full_ocr:
+    profile: unified_gpu_full_ocr
+    device: cuda
+    native_first: false
+    ocr_scope: all_pages
+    ocr_source_policy: gpu_ocr_only_v1
+    bridge_policy: raster-plus-gpu-text-v1
+    document_layout: {method: region_tree_graph_v1, furniture: {method: document_context_v3}}
+    render_dpi: 180
+    primary_engine: vietocr
+    num_threads: 2
+    batch_size: 4
+    layout: accurate
+    model_registry: models/v62/runtime-models.json
+    runtime:
+      scheduler: document_two_phase_v1
+      phase_timeout_seconds: 14400
+      lease_timeout_seconds: 60
+    docling:
+      enabled: true
+      page_selection: all
+      tables: true
+      formulas: true
+      table_mode: fast
+      num_threads: 2
+      ocr: false
+      formula_max_tokens: 256
+      timeout_seconds: 240
+      startup_timeout_seconds: 900
+      on_error: raise
+      strict_gpu: true
+      verify_placement: true
+    fallback_enabled: false
+    min_confidence: 0.80
+    numeric_retry_threshold: 0.85
+    orientation_fallback_enabled: false
+    vector_table_min_native_score: 0.90
+    skip_vector_tables_on_restricted_pdf: true
+    two_up_detection_enabled: false
+    multi_region_detection_enabled: false
+    page_timeout_seconds: 180
+    native_quality: {reliable_threshold: 0.90, review_threshold: 0.70}

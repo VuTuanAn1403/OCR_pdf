@@ -11,7 +11,7 @@ if hasattr(sys.stderr, "buffer"):
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.ocr.cli.batch_runner import main
+from src.ocr.cli.unified import run_batch as main
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -25,10 +25,44 @@ class ConfigError(ValueError):
 
 
 DOCUMENT_LAYOUT_METHODS = ("legacy", "region_tree_graph_v1")
+FURNITURE_METHODS = ("document_context_v3", "legacy_v6_1")
+
+
+def furniture_settings(layout: Dict[str, Any]) -> Dict[str, Any]:
+    """Furniture policy is independent of the page reading-order algorithm.
+
+    The historical margin rule requires an explicit frozen-baseline opt-in.
+    """
+    value = layout.get("furniture", {})
+    allowed = {"method", "min_pages", "window", "support_ratio", "position_tolerance", "edge_ratio",
+               "token_similarity_threshold", "learning_pages"}
+    if not isinstance(value, dict) or set(value) - allowed:
+        raise ConfigError("document_layout.furniture has unknown settings or is not a mapping")
+    method = value.get("method", "document_context_v3")
+    if method not in FURNITURE_METHODS:
+        raise ConfigError(f"furniture.method must be one of {FURNITURE_METHODS}")
+    if method == "legacy_v6_1":
+        if layout.get("method", "legacy") != "legacy" or set(value) != {"method"}:
+            raise ConfigError("legacy_v6_1 requires legacy layout and accepts no evidence thresholds")
+        return {"method": method}
+    result = {"method": method, "min_pages": 3, "window": 12, "support_ratio": .6,
+              "position_tolerance": .025, "edge_ratio": .20,
+              "token_similarity_threshold": .96, "learning_pages": 20, **value}
+    for key in ("min_pages", "window", "learning_pages"):
+        if isinstance(result[key], bool) or not isinstance(result[key], int):
+            raise ConfigError(f"furniture.{key} must be an integer")
+    if result["min_pages"] < 3 or min(result["window"], result["learning_pages"]) < result["min_pages"]:
+        raise ConfigError("furniture requires window and learning_pages >= min_pages >= 3")
+    for key, maximum in (("support_ratio", 1.), ("position_tolerance", .5), ("edge_ratio", .5), ("token_similarity_threshold", 1.)):
+        number = result[key]
+        if (isinstance(number, bool) or not isinstance(number, (int, float))
+                or not math.isfinite(number) or not 0 < number <= maximum):
+            raise ConfigError(f"furniture.{key} must be finite in (0, {maximum}]")
+    return result
 
 
 def document_layout_settings(config: Dict[str, Any]) -> Dict[str, Any]:
-    """An omitted document pass is legacy, including custom/archived profiles."""
+    """Keep the selected reading order; resolve furniture at document scope."""
     value = config.get("document_layout", {"method": "legacy"})
     if (not isinstance(value, dict) or set(value) - {"method", "min_gap", "furniture"}
             or value.get("method", "legacy") not in DOCUMENT_LAYOUT_METHODS):
@@ -36,8 +70,7 @@ def document_layout_settings(config: Dict[str, Any]) -> Dict[str, Any]:
     gap = value.get("min_gap", 3.)
     if isinstance(gap, bool) or not isinstance(gap, (int, float)) or not math.isfinite(gap) or gap <= 0:
         raise ConfigError("document_layout.min_gap must be finite and positive")
-    if not isinstance(value.get("furniture", {}), dict):
-        raise ConfigError("document_layout.furniture must be a mapping")
+    furniture_settings(value)
     return {"method": "legacy", **value}
 
 

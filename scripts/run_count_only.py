@@ -1,5 +1,6 @@
 """Count keywords in an existing result.md; no OCR or model setup required."""
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -25,6 +26,14 @@ def main():
         if not target.is_dir() and not target.is_absolute():
             target = PROJECT_ROOT / target
     try:
+        manifest = target / "manifest.json"
+        if manifest.is_file() and json.loads(manifest.read_text(encoding="utf-8")).get("keyword_contract"):
+            if args.keywords_file:
+                raise ValueError("V6.3 recount uses its frozen dictionary; start a new batch to change keywords")
+            from src.ocr.application.recount_document import recount_batch
+            result = recount_batch(target.parent)
+            print(f"V6.3 batch recounted and published: {result['matrix']}")
+            return
         report = CountKeywordsUseCase.execute(target, target.name, args.keywords_file)
     except (OSError, ValueError) as exc:
         parser.exit(1, f"[ERROR] {exc}\n")

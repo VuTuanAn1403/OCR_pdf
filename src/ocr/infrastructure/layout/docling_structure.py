@@ -1,4 +1,4 @@
-"""CPU Docling bridge, isolated from VietOCR's dependency environment.
+"""Docling bridge, isolated from VietOCR's dependency environment.
 
 One reusable worker per document keeps TableFormer/CodeFormula warm. The worker
 is killed on timeout; missing dependencies or inference failures remain visible
@@ -23,6 +23,7 @@ import psutil
 from src.ocr.domain.models.formula import Formula
 from src.ocr.domain.models.table import TableCell, TableStructure
 from src.ocr.runtime.paths import cache_dir, models_dir, docling_worker_path
+from src.ocr.runtime.process_tree import ProcessTree
 
 ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_VERSION = "docling-structure-v1"
@@ -102,6 +103,7 @@ class DoclingStructureExtractor:
         default = ROOT / ".venv-docling" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
         self.python = Path(configured) if configured else default
         self._process = None
+        self._tree = None
         self._responses: queue.Queue = queue.Queue()
         self._log = None
         self._job_dir = None
@@ -137,7 +139,14 @@ class DoclingStructureExtractor:
             cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._log,
             text=True, encoding="utf-8", env=env,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            start_new_session=os.name != "nt",
         )
+        try:
+            self._tree = ProcessTree(self._process)
+        except BaseException:
+            self._process.kill()
+            self._process.wait()
+            raise
         process, responses = self._process, self._responses
 
         def read_responses():
@@ -285,7 +294,10 @@ class DoclingStructureExtractor:
         process, self._process = self._process, None
         self._warm = False
         if process is not None:
-            if process.poll() is None:
+            tree, self._tree = self._tree, None
+            if tree is not None:
+                tree.close()
+            elif process.poll() is None:
                 # A Windows venv executable is a launcher with a Python child.
                 # Kill descendants too, so a timeout really stops inference.
                 try:
@@ -299,7 +311,8 @@ class DoclingStructureExtractor:
                         pass
                 process.kill()
                 psutil.wait_procs(children, timeout=10)
-            process.wait(timeout=10)
+            if tree is None:
+                process.wait(timeout=10)
             for stream in (process.stdin, process.stdout):
                 if stream:
                     stream.close()

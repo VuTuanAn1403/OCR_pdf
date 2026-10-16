@@ -1,0 +1,274 @@
+{
+  "date": "2026-10-17",
+  "version": "6.3.0.dev1",
+  "hardware": "NVIDIA GeForce RTX 2050, 4 GB",
+  "scope": "3 derived pilot PDFs / 4 pages; no OCR accuracy or 500-real-PDF soak claim",
+  "source_fingerprint": "31058032f02fb73e",
+  "quality_acceptance": "NOT_EVALUATED",
+  "documents": [
+    {
+      "id": "01_native_and_blank",
+      "pdf_sha256": "dba0e4774b3925e587200a06286fc3b42fbb91a48e19fb0717a330ef00b50aac",
+      "pages": 2,
+      "validation": "NEEDS_REVIEW",
+      "generation": "ce27b698cd119ac783dbfe77968fb43986326820abeaf52332d04a5179df1773",
+      "phase_seconds": {
+        "text": 17.313,
+        "structure": 21.625,
+        "export": 4.25
+      },
+      "peak_vram_sampled_mib": {
+        "text": 1073,
+        "structure": 1071,
+        "export": 0
+      },
+      "audits": [
+        {
+          "scope": "all_pages",
+          "source_policy": "gpu_ocr_only_v1",
+          "detector_device": "cuda",
+          "recognizer_device": "cuda",
+          "detector_calls": 1,
+          "recognizer_forward_calls": 5800,
+          "detector_scope": "full_page",
+          "detector_input_shape": [
+            2105,
+            1489,
+            3
+          ],
+          "render_dpi": 180,
+          "workload": "document",
+          "status": "OCR_PROCESSED"
+        },
+        {
+          "scope": "all_pages",
+          "source_policy": "gpu_ocr_only_v1",
+          "detector_device": "cuda",
+          "recognizer_device": "cuda",
+          "detector_calls": 1,
+          "recognizer_forward_calls": 0,
+          "detector_scope": "full_page",
+          "detector_input_shape": [
+            2105,
+            1488,
+            3
+          ],
+          "render_dpi": 180,
+          "workload": "document",
+          "status": "BLANK_NO_DETECTIONS"
+        }
+      ],
+      "tables": 0,
+      "display_keywords": 88,
+      "canonical_keywords": 87,
+      "total_canonical_matches": 2
+    },
+    {
+      "id": "02_scan",
+      "pdf_sha256": "efec06a45e8c7a32791abe765d6321737cdc4b23a65107a6d01a9ab3cde8c11b",
+      "pages": 1,
+      "validation": "NEEDS_REVIEW",
+      "generation": "8958757f0774de45d3c0978a59d04482e6b9fc988945e9b93e911150575241d6",
+      "phase_seconds": {
+        "text": 17.688,
+        "structure": 26.0,
+        "export": 4.219
+      },
+      "peak_vram_sampled_mib": {
+        "text": 1099,
+        "structure": 1071,
+        "export": 0
+      },
+      "audits": [
+        {
+          "scope": "all_pages",
+          "source_policy": "gpu_ocr_only_v1",
+          "detector_device": "cuda",
+          "recognizer_device": "cuda",
+          "detector_calls": 1,
+          "recognizer_forward_calls": 3775,
+          "detector_scope": "full_page",
+          "detector_input_shape": [
+            2105,
+            1489,
+            3
+          ],
+          "render_dpi": 180,
+          "workload": "document",
+          "status": "OCR_PROCESSED"
+        }
+      ],
+      "tables": 0,
+      "display_keywords": 88,
+      "canonical_keywords": 87,
+      "total_canonical_matches": 2
+    },
+    {
+      "id": "03_table",
+      "pdf_sha256": "9db4974764c346c8ad9790915de8788d0c72210a4850984c5f91c619246cb05e",
+      "pages": 1,
+      "validation": "NEEDS_REVIEW",
+      "generation": "8702fa571ece7fd09ac1c48580606d3abbef8efb08968540f11352cd69ab29b1",
+      "phase_seconds": {
+        "text": 15.093,
+        "structure": 18.578,
+        "export": 4.234
+      },
+      "peak_vram_sampled_mib": {
+        "text": 1097,
+        "structure": 1167,
+        "export": 0
+      },
+      "audits": [
+        {
+          "scope": "all_pages",
+          "source_policy": "gpu_ocr_only_v1",
+          "detector_device": "cuda",
+          "recognizer_device": "cuda",
+          "detector_calls": 1,
+          "recognizer_forward_calls": 5055,
+          "detector_scope": "full_page",
+          "detector_input_shape": [
+            2105,
+            1489,
+            3
+          ],
+          "render_dpi": 180,
+          "workload": "document",
+          "status": "OCR_PROCESSED"
+        }
+      ],
+      "tables": 2,
+      "display_keywords": 88,
+      "canonical_keywords": 87,
+      "total_canonical_matches": 0
+    }
+  ],
+  "matrix": "C:\\kk_2\\OCR_pdf\\output\\v63_acceptance\\MA_TRAN_DEM_TU_KHOA_3_FILES.xlsx",
+  "published_revision": 3,
+  "matrix_sha256": "6f98d567b78cc61b63c4269141ac7c9dc34a3651bd8728a0cbcb83ec3fe85e67",
+  "vram_measurement": "System-wide samples at about 2-second intervals; not a guaranteed inference peak",
+  "publication_order_verified": true,
+  "events": [
+    [
+      1,
+      null,
+      "COMMITTED"
+    ],
+    [
+      2,
+      "01_native_and_blank",
+      "OCR_RUNNING"
+    ],
+    [
+      3,
+      "01_native_and_blank",
+      "READY_TO_PUBLISH"
+    ],
+    [
+      4,
+      null,
+      "COMMITTED"
+    ],
+    [
+      5,
+      "01_native_and_blank",
+      "DOCUMENT_COMMITTED"
+    ],
+    [
+      6,
+      "02_scan",
+      "OCR_RUNNING"
+    ],
+    [
+      7,
+      "02_scan",
+      "READY_TO_PUBLISH"
+    ],
+    [
+      8,
+      null,
+      "COMMITTED"
+    ],
+    [
+      9,
+      "02_scan",
+      "DOCUMENT_COMMITTED"
+    ],
+    [
+      10,
+      "03_table",
+      "OCR_RUNNING"
+    ],
+    [
+      11,
+      "03_table",
+      "READY_TO_PUBLISH"
+    ],
+    [
+      12,
+      null,
+      "COMMITTED"
+    ],
+    [
+      13,
+      "03_table",
+      "DOCUMENT_COMMITTED"
+    ]
+  ],
+  "resume": {
+    "status": "PASS",
+    "unchanged_artifacts_and_phase_logs": 69,
+    "published_revision": 3,
+    "additional_ocr_running_events": 0
+  },
+  "recount": {
+    "status": "PASS",
+    "unchanged_ocr_and_phase_files": 15,
+    "counts_unchanged": true,
+    "published_revision": 6,
+    "matrix_sha256": "e85cf8e7e8a121637eaee0e1deadb4e96bcbc41df6aecc59258fd9459ca58dd8"
+  },
+  "schema_version": "v63-integration-verification-v1",
+  "timezone": "Asia/Bangkok",
+  "tests": {
+    "tests": 789,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 789,
+    "seconds": 108.69,
+    "junit_sha256": "ab3892717d206585b4ee53d653c1bc478d0b17abb5f989103301f9c1a2f4cdab",
+    "junit_path": "scratch/v63-acceptance.xml",
+    "scope": "unit and scientific software tests; not an annotated accuracy benchmark"
+  },
+  "benchmark_caveat": "Pytest ran concurrently; timings are integration observations, not throughput acceptance. No RAM/CPU-stage benchmark or 500-real-PDF soak.",
+  "snapshot_hashes": {
+    "batch_config.json": "367a38c3756122a22ec4797ac07928333e45bc27c365f3113e57ed14a35cba92",
+    "batch_input_manifest.json": "4461a3961f81a6d5dfd073bd79a8e46bb46a50550243104f71785bdf22f03cd9",
+    "keyword_dictionary.snapshot.json": "b104faf09850222f5a64a04bda42077549eb70a69877887e79cc1ed1627f62ef"
+  },
+  "fixture_recipes": [
+    {
+      "fixture": "01_native_and_blank.pdf",
+      "source": "inputs\\AAA_Baocaothuongnien_2023.pdf",
+      "source_sha256": "82c9d768db74e6aa4c0eb3e811ee990208613451277c1f09f3c673bb0bdff232",
+      "physical_page_1_based": 28,
+      "recipe": "original selected page plus a blank page"
+    },
+    {
+      "fixture": "03_table.pdf",
+      "source": "inputs\\AAA_Baocaothuongnien_2023.pdf",
+      "source_sha256": "82c9d768db74e6aa4c0eb3e811ee990208613451277c1f09f3c673bb0bdff232",
+      "physical_page_1_based": 4,
+      "recipe": "original selected page"
+    },
+    {
+      "fixture": "02_scan.pdf",
+      "source": "inputs\\BSI_Baocaothuongnien_2023.pdf",
+      "source_sha256": "9b5483422c084142a58806762141679c802a13a7ea73fd4d5402d45fff20e5a7",
+      "physical_page_1_based": 79,
+      "recipe": "render at 150 DPI; image-only PDF"
+    }
+  ]
+}

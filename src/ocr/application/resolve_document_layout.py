@@ -6,7 +6,7 @@ import json
 import unicodedata
 
 from src.ocr.infrastructure.layout.region_tree import LayoutItem, infer_region_tree, METHOD
-from src.ocr.infrastructure.postprocessing.document_furniture import DocumentFurnitureResolver
+from src.ocr.application.resolve_document_furniture import resolve_document_furniture
 from src.ocr.infrastructure.structure.ids import page_items
 from src.ocr.infrastructure.structure.source_identity import assign_source_ids
 from src.ocr.infrastructure.postprocessing.reading_order_graph import Edge, solve_order
@@ -129,7 +129,7 @@ def resolve_document_layout(doc, settings=None):
                 for field in ("source_id", "source_id_method", "raw_text_sha8", "evidence_generation"):
                     setattr(item.block, field, data[field])
                 item.block.review_reason_codes = sorted(set(item.block.review_reason_codes + data["review_reason_codes"]))
-    DocumentFurnitureResolver(**settings.get("furniture", {})).resolve(doc)
+    resolve_document_furniture(doc, settings)
     for page in doc.pages:
         items = page_items(doc.file_hash, page, ignore_flow=True)
         identities = page.metadata["source_identity"]["items"]
@@ -169,7 +169,8 @@ def resolve_document_layout(doc, settings=None):
             page.metadata["layout_status"] = "NEEDS_REVIEW"
         else:
             page.metadata["layout_status"] = "RESOLVED"
-        review_count = len(layout.review) + sum(b.role_status == "NEEDS_REVIEW" or bool(b.review_reason_codes) for b in page.blocks)
+        # Furniture reviews were already accounted for by the shared pass.
+        review_count = len(layout.review) + sum(b.role_status != "NEEDS_REVIEW" and bool(b.review_reason_codes) for b in page.blocks)
         previous = page.metadata.get("document_layout_review_count", 0)
         page.quality.review_required_count = max(0, page.quality.review_required_count - previous) + review_count
         page.metadata["document_layout_review_count"] = review_count

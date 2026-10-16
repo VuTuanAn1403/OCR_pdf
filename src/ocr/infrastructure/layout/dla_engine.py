@@ -1,7 +1,7 @@
 """
 V5.0 Document Layout Analysis (DLA) Engine.
 
-Provides deep vision-based and geometric layout decomposition into 9 scientific categories:
+Provides optional model inference and a heuristic fallback for 11 project labels:
 - TITLE
 - SECTION_HEADER
 - HEADER (Running page header)
@@ -35,7 +35,7 @@ from src.ocr.domain.models.region import Region, BoundingBox, ContentType
 from src.ocr.domain.models.text_block import TextBlock
 
 
-# Standard 9-class schema for academic DLA benchmarks (COCO compatible)
+# Project label order; not a claim of equivalence to a published benchmark.
 DLA_CLASSES = [
     "title",           # 0
     "section_header",  # 1
@@ -81,7 +81,7 @@ class HeuristicLayoutClassifier:
         model_config: Optional[Dict[str, Any]] = None,
         device: str = "auto",
         num_threads: int = 4,
-        legacy_furniture: bool = True,
+        legacy_furniture: bool = False,
     ):
         self.model_path = Path(model_path) if model_path else None
         self.legacy_furniture = legacy_furniture
@@ -387,15 +387,18 @@ class HeuristicLayoutClassifier:
         footer_band_y: float,
     ) -> Tuple[ContentType, str, int]:
         """
-        Classifies an individual text block into one of the 9 scientific categories.
+        Propose a content role; running furniture needs document evidence.
+
+        The old 10% rule below is available only for explicitly reproducing
+        the frozen V6.1 baseline. It is disabled in normal processing.
         """
         clean_text = " ".join(text.split())
         line_count = len(text.splitlines())
 
-        # 1. Page Number
-        from src.ocr.infrastructure.postprocessing.document_furniture import is_page_number_text
-        page_number = (bool(re.match(r"^(\d+|[ivxlcdm]+|\btrang\s+\d+(\s*\/\s*\d+)?\b)$", clean_text, re.I))
-                       if self.legacy_furniture else is_page_number_text(clean_text))
+        if self.legacy_furniture:
+            page_number = bool(re.match(r"^(\d+|[ivxlcdm]+|\btrang\s+\d+(\s*\/\s*\d+)?\b)$", clean_text, re.I))
+        else:
+            page_number = False  # Pagination, too, is resolved after all pages.
         if page_number:
             if bbox.y1 <= header_band_y or bbox.y0 >= footer_band_y:
                 return ContentType.PAGE_NUMBER, "page_number", 5

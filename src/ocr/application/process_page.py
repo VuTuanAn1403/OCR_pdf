@@ -95,8 +95,9 @@ class ProcessPageUseCase:
     ):
         self.doc = doc
         self.config = config
-        from src.ocr.runtime.config import document_layout_settings
+        from src.ocr.runtime.config import document_layout_settings, furniture_settings
         self.document_layout = document_layout_settings(config)
+        self.legacy_furniture = furniture_settings(self.document_layout)["method"] == "legacy_v6_1"
         self.doc_hash = doc_hash
         self.cache = cache
 
@@ -133,7 +134,7 @@ class ProcessPageUseCase:
             model_config=layout_config,
             device=config.get("device", "cpu"),
             num_threads=layout_config.get("num_threads", config.get("num_threads", 4)),
-            legacy_furniture=self.document_layout["method"] == "legacy",
+            legacy_furniture=self.legacy_furniture,
         ))
         self.fallback_engine = FallbackEngine(
             upscale_dpi=config.get("fallback_upscale_dpi", 250),
@@ -585,7 +586,8 @@ class ProcessPageUseCase:
                 meta["region_count"] = len(regions)
             render_duration = time.perf_counter() - t_render_start
             t_ocr_start = time.perf_counter()
-            if meta.get("layout_type") in ("TWO_UP", "MULTI_REGION") and len(regions) >= 2:
+            if (self.config.get("ocr_source_policy") != "gpu_ocr_only_v1"
+                    and meta.get("layout_type") in ("TWO_UP", "MULTI_REGION") and len(regions) >= 2):
                 ocr_results, orientation_fallback = self._predict_region_ocr(
                     img_bgr,
                     regions,
@@ -885,7 +887,7 @@ class ProcessPageUseCase:
         order_sorter = ReadingOrderSorter(page_width=page_w, page_height=page_h,
                                           method=reading_order.get("method", "heuristic"),
                                           min_gap=reading_order.get("min_gap", 3.0))
-        order_sorter.classify_furniture = self.document_layout["method"] == "legacy"
+        order_sorter.classify_furniture = self.legacy_furniture
         sorted_blocks = order_sorter.sort_blocks(blocks)
         if reading_order:  # explicit choice (C3.4 experiment) is recorded; the default stays unchanged
             meta["reading_order"] = {"method": order_sorter.method, "min_gap": order_sorter.min_gap,

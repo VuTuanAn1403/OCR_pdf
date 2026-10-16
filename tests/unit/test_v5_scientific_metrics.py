@@ -91,5 +91,9 @@ def test_dla_engine_classification():
         header_band_y=80,
         footer_band_y=720,
     )
-    assert label == "header"
-    assert c_type == ContentType.HEADER
+    # A single margin block cannot establish a running header.
+    assert label == "text"
+    frozen = DLAEngine(legacy_furniture=True)
+    assert frozen._classify_text_block("TỔNG CÔNG TY CẤP NƯỚC SÀI GÒN", bb_header,
+                                      800, 600, 2, 11, 80, 720)[1] == "header"
+    assert c_type == ContentType.TEXT

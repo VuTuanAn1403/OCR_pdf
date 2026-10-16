@@ -136,14 +136,14 @@ class ConvertDocumentUseCase:
                 config["device"] = "cpu"
             else:
                 raise ValueError("The RapidOCR primary backend currently runs on CPU; use --device cpu for this profile")
+        if isinstance(config.get("docling"), dict):
+            config["docling"]["device"] = "cpu" if config["device"] == "cuda" else config["device"]
         config["backend_devices"] = {
             "ocr_detection": "cpu",  # RapidOCR detector GPU path awaits T4.
             "ocr_recognition": config["device"],
             "layout": config["device"],
-            "docling": config["device"] if config.get("docling", {}).get("enabled") else None,
+            "docling": config.get("docling", {}).get("device") if config.get("docling", {}).get("enabled") else None,
         }
-        if isinstance(config.get("docling"), dict):
-            config["docling"]["device"] = config["device"]
         return config
 
     def execute(

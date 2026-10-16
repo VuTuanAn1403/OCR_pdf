@@ -1,7 +1,7 @@
 profiles:
   fast:
     profile: fast
-    document_layout: {method: legacy}
+    document_layout: {method: legacy, furniture: {method: document_context_v3}}
     native_first: true
     render_dpi: 150
     primary_engine: rapidocr
@@ -26,7 +26,7 @@ profiles:
   # through balanced/accuracy for machines with more resources.
   local:
     profile: local
-    document_layout: {method: legacy}
+    document_layout: {method: legacy, furniture: {method: document_context_v3}}
     device: auto
     native_first: true
     render_dpi: 180
@@ -55,7 +55,7 @@ profiles:
 
   balanced:
     profile: balanced
-    document_layout: {method: legacy}
+    document_layout: {method: legacy, furniture: {method: document_context_v3}}
     native_first: true
     render_dpi: 180
     primary_engine: vietocr
@@ -93,7 +93,7 @@ profiles:
 
   accuracy:
     profile: accuracy
-    document_layout: {method: legacy}
+    document_layout: {method: legacy, furniture: {method: document_context_v3}}
     native_first: true
     render_dpi: 180
     primary_engine: vietocr

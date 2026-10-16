@@ -2,7 +2,7 @@ profiles:
   unified_gpu:
     profile: unified_gpu
     device: cuda
-    document_layout: {method: region_tree_graph_v1}
+    document_layout: {method: region_tree_graph_v1, furniture: {method: document_context_v3}}
     native_first: true
     render_dpi: 180
     primary_engine: vietocr

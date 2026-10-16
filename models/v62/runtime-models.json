@@ -18,7 +18,7 @@
   },
   "text_detector": {
     "adapter": "onnx-db-map-v1",
-    "model_path": "models\\v62\\ch_PP-OCRv4_det_infer.onnx",
+    "model_path": "models/v62/ch_PP-OCRv4_det_infer.onnx",
     "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
     "scope": "full_page",
     "max_side": 1536,
@@ -26,7 +26,7 @@
   },
   "layout_model": {
     "adapter": "hf_rtdetr_torch",
-    "model_path": "models\\docling\\huggingface\\hub\\models--docling-project--docling-layout-heron\\snapshots\\8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+    "model_path": "models/docling/huggingface/hub/models--docling-project--docling-layout-heron/snapshots/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
     "on_error": "raise",
     "render_dpi": 144
   },

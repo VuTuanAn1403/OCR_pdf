@@ -555,7 +555,9 @@ def _inside_table(item: Item, tables: Sequence[Item]) -> bool:
     return False
 
 
-def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: str = "legacy") -> DocStructure:
+def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: str = "legacy",
+                    furniture_method: Optional[str] = None) -> DocStructure:
+    frozen_furniture = furniture_method == "legacy_v6_1" or (furniture_method is None and layout_method == "legacy")
     dropped: Dict[str, str] = {}
     # 1. Body text lines in reading order; everything else stays an item.
     sequence: List[Tuple[str, object]] = []
@@ -566,7 +568,7 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
                 sequence.append(("item", item))
                 continue
             block = item.block
-            peripheral = ("header", "footer", "running_header", "running_footer", "page_number") if layout_method == "legacy" else ("running_header", "running_footer", "page_number")
+            peripheral = ("header", "footer", "running_header", "running_footer", "page_number") if frozen_furniture else ("running_header", "running_footer", "page_number")
             if block.block_type in peripheral:
                 dropped[item.id] = block.block_type
             elif not block.text.strip():
@@ -626,7 +628,7 @@ def build_structure(items_by_page: Sequence[Sequence[Item]], *, layout_method: s
         accepted = sorted(accepted + [(p, h) for p, h in near_misses if id(h) in promoted], key=lambda pair: pair[0])
     headings = merge_headings(accepted)
     _attach_translations(headings, sequence, reference)
-    if layout_method == "legacy":
+    if frozen_furniture:
         headings = _drop_repeated_titles(headings, dropped)
     assign_levels(headings)
 
