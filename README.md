@@ -2,7 +2,7 @@
 
 Dự án xử lý PDF tiếng Việt, tập trung vào báo cáo thường niên và báo cáo tài chính: nhận dạng chữ, khôi phục bảng/công thức, lưu bằng chứng theo trang và đếm từ khóa vào Excel.
 
-**Phiên bản hiện tại: `6.3.0.dev1` — bản phát triển.** Luồng mặc định V6.3 OCR mọi trang trên GPU, xuất kết quả từng tài liệu rồi cập nhật ma trận từ khóa trước khi chuyển sang PDF tiếp theo. Các profile CPU/native-first và notebook Kaggle vẫn dùng đường xử lý legacy.
+**Phiên bản hiện tại: `6.3.0.dev1` — bản phát triển.** Luồng mặc định V6.3 OCR mọi trang trên GPU, xuất kết quả từng tài liệu rồi cập nhật ma trận từ khóa trước khi chuyển sang PDF tiếp theo. Kaggle có notebook V6.3 GPU và notebook legacy cho các profile CPU/native-first.
 
 Repository: [VuTuanAn1403/OCR_pdf](https://github.com/VuTuanAn1403/OCR_pdf).
 
@@ -32,7 +32,8 @@ Repository: [VuTuanAn1403/OCR_pdf](https://github.com/VuTuanAn1403/OCR_pdf).
 | VietOCR với native-first trên máy cá nhân | `--backend legacy --profile local` | RapidOCR dò chữ trên CPU, VietOCR dùng CPU/CUDA tùy thiết bị |
 | Đếm lại `result.md` từ output legacy | `scripts/run_count_only.py <thư_mục_tài_liệu>` | Chỉ cần `pydantic` và `openpyxl` |
 | Đếm lại batch V6.3 đã có | `run_batch.py --output <batch> --recount` | Giữ nguyên snapshot, source PDF và runtime đã ghi |
-| Chạy trong notebook Kaggle | [ocr_pdf_kaggle.ipynb](kaggle/ocr_pdf_kaggle.ipynb) | Notebook thiết lập môi trường legacy riêng |
+| Chạy V6.3 GPU trên Kaggle | [ocr_pdf_v63_kaggle.ipynb](kaggle/ocr_pdf_v63_kaggle.ipynb) | Tự chuẩn bị worker GPU/model đã khóa, xuất ma trận SQLite V6.3 |
+| Chạy legacy/CPU trên Kaggle | [ocr_pdf_kaggle.ipynb](kaggle/ocr_pdf_kaggle.ipynb) | Notebook thiết lập môi trường legacy riêng |
 
 **Phân biệt CLI:** `--pages`, `--limit`, `--files`, `--shard` và nhiều worker là tùy chọn của legacy. V6.3 xử lý nguyên tài liệu, tuần tự, với `--workers 1`; không nhận các tham số trên. `--output-mode legacy` chỉ đổi định dạng `result.json`, không đổi backend.
 
@@ -374,7 +375,21 @@ python -m src.ocr.cli.gpu_runner inputs/bao_cao.pdf --env-root .venv-v62 --confi
 
 ## 9. Chạy trên Kaggle
 
-Notebook: [kaggle/ocr_pdf_kaggle.ipynb](kaggle/ocr_pdf_kaggle.ipynb).
+### 9.1. V6.3 GPU — notebook cho luồng mặc định hiện tại
+
+File: [kaggle/ocr_pdf_v63_kaggle.ipynb](kaggle/ocr_pdf_v63_kaggle.ipynb). Import notebook vào Kaggle, bật Internet, chọn GPU, Add Input dataset PDF rồi chạy 9 cell theo thứ tự.
+
+- Tự cài Python 3.11, supervisor và hai worker GPU từ Linux lock có SHA-256. Tải VietOCR, detector và snapshot Docling đúng registry; không cài dependency OCR vào kernel Kaggle.
+- Mặc định `FILE_LIMIT = None`, `PDF_FILES = []`: lấy tất cả PDF, gồm thư mục con, gom vào input phẳng và xử lý tên trùng bằng hậu tố. V6.3 OCR toàn bộ trang; muốn thử một file, đặt `FILE_LIMIT = 1` và chọn thư mục kết quả riêng.
+- Có `RESUME`, `RETRY_FAILED`, `FORCE_OCR`, `RECOUNT_ONLY`. Khi đổi input/keyword/runtime hoặc tùy chọn output, dùng `RESULTS_DIR` mới. Không tự pull mã mới vào batch đang chạy.
+- Ma trận do pipeline V6.3 cập nhật sau từng PDF, dùng chính snapshot keyword. Cell xác minh đối chiếu SQLite, revision, hash workbook và receipt trước khi báo hoàn tất.
+- Kết quả: `/kaggle/working/ocr_pdf_v63_results/`; ma trận trong `documents/MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx`; ZIP `/kaggle/working/ocr_pdf_v63_results.zip`. ZIP chứa output, SQLite và log; không chứa runtime/model/checkpoint GPU. Resume được hỗ trợ trong cùng phiên, chưa bảo đảm khôi phục sau khi Kaggle xóa runtime.
+
+Notebook dùng GPU 0 với một worker, không tự chia qua hai GPU. Kiểm chứng cục bộ: **29 test notebook đạt** (V6.3 và legacy), gồm chọn đủ 53 PDF, xử lý tên Unicode trùng, kiểm hash model, kiểm Excel/SQLite/receipt, bắt output hỏng và đóng ZIP sau lỗi. Hai file cấu hình VietOCR được cố định CRLF trong `.gitattributes` để hash model không đổi khi clone Linux. Chưa có bằng chứng chạy trực tiếp trong một phiên Kaggle thực.
+
+### 9.2. Legacy — CPU hoặc VietOCR native-first
+
+File: [kaggle/ocr_pdf_kaggle.ipynb](kaggle/ocr_pdf_kaggle.ipynb).
 
 1. Import notebook vào Kaggle, bật Internet, thêm dataset chứa PDF; chọn GPU nếu giữ `DEVICE = "cuda"`.
 2. Kiểm tra `REPO_URL`, `REPO_REF`, `INPUT_ROOT`, `PROFILE`, `DEVICE`, `KEYWORDS_FILE`.

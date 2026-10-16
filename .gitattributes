@@ -2,5 +2,9 @@
 *.sh text eol=lf
 *.ipynb text eol=lf
 
+# These tracked configs are part of the model registry's byte-level hashes.
+# Preserve the locked CRLF bytes even when checking out on Linux/Kaggle.
+models/vietocr/*.yml text eol=crlf
+
 # Captured evidence retains its original bytes; console logs may pad lines.
 benchmark/evidence/** -text -whitespace
