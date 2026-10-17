@@ -107,6 +107,18 @@ class ProcessTree:
         return alive
 
 
+def log_tail(path, *, max_bytes=8192, max_lines=20, max_chars=2400):
+    """Bound worker diagnostics before propagating them to batch/Excel errors."""
+    try:
+        with Path(path).open("rb") as source:
+            source.seek(0, 2)
+            source.seek(max(0, source.tell() - max_bytes))
+            text = source.read().decode("utf-8", errors="replace")
+        return "\n".join(text.splitlines()[-max_lines:])[-max_chars:]
+    except OSError:
+        return ""
+
+
 def supervised_run(command, *, cwd, env, log_path, timeout, observe=None):
     """Return only after the entire tree is gone, including on failure/cancel."""
     log_path = Path(log_path)
@@ -131,7 +143,9 @@ def supervised_run(command, *, cwd, env, log_path, timeout, observe=None):
                     raise TimeoutError(f"Phase exceeded {timeout:g}s; see {log_path}")
                 time.sleep(.2)
             if proc.returncode:
-                raise RuntimeError(f"Phase exited with code {proc.returncode}; see {log_path}")
+                details = log_tail(log_path)
+                raise RuntimeError(f"Phase exited with code {proc.returncode}; see {log_path}"
+                                   + (f"\nWorker log tail:\n{details}" if details else ""))
         finally:
             tree.close()
         return {"pid": proc.pid, "descendants": sorted(set(tree.seen) - {proc.pid}),

@@ -385,7 +385,26 @@ File: [kaggle/ocr_pdf_v63_kaggle.ipynb](kaggle/ocr_pdf_v63_kaggle.ipynb). Import
 - Ma trận do pipeline V6.3 cập nhật sau từng PDF, dùng chính snapshot keyword. Cell xác minh đối chiếu SQLite, revision, hash workbook và receipt trước khi báo hoàn tất.
 - Kết quả: `/kaggle/working/ocr_pdf_v63_results/`; ma trận trong `documents/MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx`; ZIP `/kaggle/working/ocr_pdf_v63_results.zip`. ZIP chứa output, SQLite và log; không chứa runtime/model/checkpoint GPU. Resume được hỗ trợ trong cùng phiên, chưa bảo đảm khôi phục sau khi Kaggle xóa runtime.
 
-Notebook dùng GPU 0 với một worker, không tự chia qua hai GPU. Kiểm chứng cục bộ: **29 test notebook đạt** (V6.3 và legacy), gồm chọn đủ 53 PDF, xử lý tên Unicode trùng, kiểm hash model, kiểm Excel/SQLite/receipt, bắt output hỏng và đóng ZIP sau lỗi. Hai file cấu hình VietOCR được cố định CRLF trong `.gitattributes` để hash model không đổi khi clone Linux. Chưa có bằng chứng chạy trực tiếp trong một phiên Kaggle thực.
+Notebook dùng GPU 0 với một worker, không tự chia qua hai GPU. Kiểm thử notebook (V6.3 và legacy) bao phủ chọn đủ 53 PDF, xử lý tên Unicode trùng, kiểm hash model, kiểm Excel/SQLite/receipt, bắt output hỏng và đóng ZIP sau lỗi, kể cả khi thư mục tạm Windows nằm khác ổ đĩa. Hai file cấu hình VietOCR được cố định CRLF trong `.gitattributes` để hash model không đổi khi clone Linux. Kiểm thử cục bộ không thay thế chạy đủ dataset trong một phiên Kaggle thực.
+
+#### Lỗi thiếu font và trang PDF xoay trong log Kaggle
+
+Hai traceback đã ghi nhận trong lượt chạy Kaggle ngày 17/10/2026:
+
+| Traceback cuối worker | Nguyên nhân và bản sửa |
+| --- | --- |
+| `Set OCR_BRIDGE_FONT to a Unicode TrueType font` trong `structure.log` | Worker không có Arial/DejaVu ở đường dẫn cố định. Dự án kèm [Noto Sans và giấy phép](assets/fonts/README.md), nhúng font này vào PDF trung gian và kiểm tra glyph tiếng Việt trước khi OCR. Có thể đặt `OCR_BRIDGE_FONT` tới font TrueType khác; đường dẫn/hash được khóa vào nhận dạng runtime. |
+| `Strict GPU layout requires a verified coordinate transform for this rotated page` trong `text.log` | OCR dùng tọa độ trang sau khi render, trong khi layout trả tọa độ PDF chưa xoay. V6.3 chuyển vùng native/vector/ảnh và dự đoán layout sang `pdf_display_points`, thống nhất với chữ OCR và PDF trung gian; ghi affine chain khả nghịch vào metadata, giữ nguyên PDF nguồn. Đường OCR xoay thử của legacy vẫn giữ chặn hình học cũ. |
+
+GPU đã thực hiện OCR trong các log này; mã thoát `1` không tự chứng minh lỗi CUDA hay hết VRAM. Bản mới đưa phần cuối traceback vào lỗi scheduler/batch để dễ đọc trong Excel. Ô đếm trống của `FAILED_DOCUMENT` không phải số `0`.
+
+Để chạy bản sửa, tải lại notebook V6.3 từ repository, bật `REFRESH_SOURCE=True` và chọn thư mục kết quả mới trong cell 1:
+
+```python
+RESULTS_DIR = Path("/kaggle/working/ocr_pdf_v63_fixed")
+```
+
+Chạy lại các cell từ đầu. Giữ `RUNTIME_ROOT` để tái sử dụng môi trường/model trong cùng phiên; cell 4 cập nhật source khi thư mục batch mới chưa có ledger. Không dùng `RETRY_FAILED` để trộn code mới vào ledger của lượt cũ: nhận dạng nguồn đã đổi. Nếu checkout cũ có sửa tay và Git từ chối cập nhật, dùng phiên mới hoặc `RUNTIME_ROOT` mới. Có thể thử một PDF với `FILE_LIMIT=1` và output riêng trước khi chạy toàn bộ dataset.
 
 #### Sửa phiên Kaggle cũ báo thiếu `torch` / `onnxruntime`
 
@@ -446,6 +465,7 @@ src/ocr/
 └── cli/             # Unified CLI V6.3 và CLI lịch sử
 config/              # Profiles, hardware, keywords
 models/              # Cấu hình model và registry; trọng số được gitignore
+assets/fonts/        # Font tiếng Việt và giấy phép cho PDF trung gian
 requirements/v62/    # Lock theo Windows/Linux cho hai worker GPU
 scripts/             # Setup, preflight, smoke, đếm và benchmark
 benchmark/           # Metric, ground truth mẫu, protocol và evidence
@@ -473,7 +493,7 @@ Integration/golden có thể bỏ qua khi thiếu PDF BHN/CLW hoặc prediction 
 
 GitHub Actions ở [tests.yml](.github/workflows/tests.yml) chạy unit/scientific trên Windows và Ubuntu, Python 3.11; cài dependency legacy/test và chuẩn bị model. Workflow không nghiệm thu GPU, chất lượng OCR hay tải dài.
 
-Bộ unit/scientific được chạy lại khi rà soát dự án ngày **17/10/2026**: **789 passed**, một cảnh báo dependency `gdown/pkg_resources`, trong 110,19 giây. Đây là kết quả kiểm thử tại máy phát triển, chưa phải kết quả GitHub Actions trên cả hai hệ điều hành.
+Bộ unit/scientific được chạy lại sau sửa lỗi Kaggle ngày **17/10/2026**: **821 passed, 1 skipped** (test symlink venv thực dành cho Linux), một cảnh báo dependency `gdown/pkg_resources`, trong 134,06 giây. Đây là kết quả kiểm thử tại máy phát triển, chưa phải kết quả GitHub Actions trên cả hai hệ điều hành. Hồi quy bao phủ font Unicode độc lập hệ điều hành, dấu tiếng Việt trong PDF trung gian, trang xoay 0/90/180/270° với cropbox lệch gốc và traceback worker truyền về batch. Lượt GPU bổ sung cho bản sửa này bị khóa thiết bị vì một batch khác đang chạy; chưa có kết quả chạy lại toàn bộ 50 PDF trên Kaggle.
 
 Nhóm integration/golden đạt thêm **5 passed, 3 skipped** do thiếu PDF/prediction BHN và CLW. Smoke GPU V6.3 trên `examples/sample.pdf` đã xuất được Excel/ma trận, kiểm receipt, resume không đổi artifact và recount giữ nguyên Markdown/số đếm. Output mẫu có `NEEDS_REVIEW`. Bản ghi rà soát: [project_review_20261017.json](benchmark/evidence/project_review_20261017.json).
 

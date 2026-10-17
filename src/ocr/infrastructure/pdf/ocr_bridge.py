@@ -5,15 +5,31 @@ from pathlib import Path
 
 import pymupdf
 
+from src.ocr.runtime.paths import PROJECT_ROOT, runtime_resource
+
+
+def bridge_font_path():
+    """A repository font makes headless workers independent of OS fonts."""
+    default = PROJECT_ROOT / "assets/fonts/NotoSans-Regular.ttf"
+    if not (PROJECT_ROOT / "pyproject.toml").is_file():
+        default = runtime_resource("fonts/NotoSans-Regular.ttf")
+    return Path(os.environ.get("OCR_BRIDGE_FONT") or default).absolute()
+
+
+def load_bridge_font(path=None):
+    path = Path(path) if path is not None else bridge_font_path()
+    if not path.is_file():
+        raise RuntimeError(f"OCR bridge font missing: {path}. Restore assets/fonts or set OCR_BRIDGE_FONT.")
+    font = pymupdf.Font(fontfile=str(path))
+    sample = "ĐđĂăÂâÊêÔôƠơƯưẮằẵặẾềễệỐồỗộỚờỡợỨừữựỲỳỷỹỵ"
+    if any(not font.has_glyph(ord(char), fallback=False) for char in sample):
+        raise RuntimeError(f"OCR bridge font does not cover Vietnamese: {path}")
+    return path, font
+
 
 @contextmanager
-def ocr_bridge(source_page, extracted_page, dpi):
-    fonts = [Path(os.getenv("OCR_BRIDGE_FONT", "C:/Windows/Fonts/arial.ttf")),
-             Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")]
-    font_path = next((p for p in fonts if p.is_file()), None)
-    if font_path is None:
-        raise RuntimeError("Set OCR_BRIDGE_FONT to a Unicode TrueType font")
-    font = pymupdf.Font(fontfile=str(font_path))
+def ocr_bridge(source_page, extracted_page, dpi, *, font_path=None):
+    font_path, font = load_bridge_font(font_path)
     with pymupdf.open() as bridge:
         target = bridge.new_page(width=extracted_page.width, height=extracted_page.height)
         target.insert_image(target.rect, pixmap=source_page.get_pixmap(dpi=dpi, alpha=False))

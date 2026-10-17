@@ -31,6 +31,9 @@ def worker_paths(tmp_path, monkeypatch):
 
 
 def registry_fixture(root):
+    font = root / "assets/fonts/NotoSans-Regular.ttf"
+    font.parent.mkdir(parents=True)
+    font.write_bytes(b"fixture font")
     registry = root / "models/v62/runtime-models.json"
     registry.parent.mkdir(parents=True)
     registry.write_text(json.dumps({"files": {}, "text_detector": {"model_path": "models/detector.onnx"},
@@ -59,10 +62,16 @@ def test_v63_preflight_and_requests_keep_worker_venv_paths(tmp_path, monkeypatch
         return {"status": "CAPABILITY_ONLY"}
 
     monkeypatch.setattr(probes, "inspect_environment", inspect)
+    font_probes = []
+    monkeypatch.setattr(v63_backend.subprocess, "run", lambda command, **kw:
+        font_probes.append(command) or SimpleNamespace(returncode=0))
     backend = v63_backend.prepare_backend(ROOT / "config/profiles-v63.yaml", "unified_gpu_full_ocr", env_root, preflight=preflight)
     for role, path in workers.items():
         assert backend[f"{role}_python"] == str(path.absolute())
     assert observed == ([str(workers[r].absolute()) for r in ("text", "docling")] if preflight else [])
+    assert len(font_probes) == int(preflight)
+    assert not font_probes or font_probes[0][0] == str(workers["text"].absolute())
+    assert backend["config"]["bridge_font"] in backend["model_hashes"]
 
 
 def test_v62_launcher_keeps_worker_venv_paths(tmp_path, monkeypatch, worker_paths):

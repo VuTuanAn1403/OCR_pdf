@@ -204,8 +204,9 @@ class ProcessPageUseCase:
             return
         meta["layout_model"] = {"adapter": engine.adapter_kind, "model_path": str(engine.model_path),
                                 "device": engine.device, "status": "FAILED_FALLBACK"}
+        display_coordinates = self.config.get("ocr_source_policy") == "gpu_ocr_only_v1"
         if (meta.get("is_1up_landscape") or meta.get("is_180_rotated")
-                or getattr(doc_page, "rotation", 0)):
+                or (getattr(doc_page, "rotation", 0) and not display_coordinates)):
             # Legacy OCR can retain boxes in an upright page space. Until all
             # transforms are invertible, do not merge original-PDF model boxes.
             meta["layout_model"].update(status="SKIPPED_COORDINATE_TRANSFORM_REQUIRED",
@@ -226,6 +227,13 @@ class ProcessPageUseCase:
                 from src.ocr.infrastructure.pdf.coordinate_transform import render_coordinate_chain
                 meta["layout_model"]["render_transform"] = render_coordinate_chain(doc_page, image.shape).to_dict()
             predicted = engine._run_onnx_dla(image, doc_page, page_num)
+            if display_coordinates:
+                from src.ocr.infrastructure.pdf.coordinate_transform import page_display_chain
+                chain = page_display_chain(doc_page)
+                for region in predicted:
+                    box = chain.bbox(region.bbox.to_list())
+                    region.bbox = BoundingBox(x0=box[0], y0=box[1], x1=box[2], y1=box[3])
+                meta["layout_model"]["native_to_output"] = chain.to_dict()
             text_labels = {"title", "section_header", "text", "header", "footer", "page_number", "caption", "list", "document_index"}
             for block in blocks:
                 if len(block.bbox) != 4 or block.block_type == "formula":
@@ -239,7 +247,8 @@ class ProcessPageUseCase:
             regions.extend(predicted)
             meta["layout_model"].update(status="MODEL_OUTPUT", regions=len(predicted),
                                         providers=engine._session.get_providers(),
-                                        coordinates="PDF_POINTS_TOP_LEFT_CROP_RELATIVE",
+                                        coordinates=("PDF_DISPLAY_POINTS_TOP_LEFT_CROP_RELATIVE" if display_coordinates
+                                                     else "PDF_POINTS_TOP_LEFT_CROP_RELATIVE"),
                                         validated_on_pilot=False)
         except Exception as exc:
             if getattr(engine, "strict", False) is True:
@@ -444,7 +453,16 @@ class ProcessPageUseCase:
 
         # 2b. V3.1.2 Content Composition — decompose page into regions
         doc_page = self.doc[page_num - 1]
-        regions = self.content_analyzer.analyze(meta, doc_page)
+        if self.config.get("ocr_source_policy") == "gpu_ocr_only_v1":
+            # Full-page OCR scales rendered pixels into page.rect (display
+            # points). Bring native geometry and layout predictions into that
+            # same frame; leave the source PDF and its /Rotate unchanged.
+            from src.ocr.infrastructure.pdf.coordinate_transform import page_display_chain
+            meta["coordinate_space"] = {"name": "pdf_display_points",
+                "native_to_output": page_display_chain(doc_page).to_dict()}
+            regions = self.content_analyzer.analyze(meta, doc_page, display_coordinates=True)
+        else:
+            regions = self.content_analyzer.analyze(meta, doc_page)
         inspect_duration = time.perf_counter() - t0
         native_extract_duration = 0.0
         render_duration = 0.0

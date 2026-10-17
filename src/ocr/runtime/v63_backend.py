@@ -34,6 +34,13 @@ def prepare_backend(config_path, profile, env_root, *, preflight=True):
         if sha256(name) != checksum:
             raise IdentityMismatch(f"MODEL_LOCK_MISMATCH: {name}")
     models[str(registry_path)] = sha256(registry_path)
+    # Pin the bridge font along with other worker inputs. Resolve it without
+    # importing PyMuPDF/Torch into this CPU-only supervisor.
+    font = Path(os.environ.get("OCR_BRIDGE_FONT") or ROOT / "assets/fonts/NotoSans-Regular.ttf").absolute()
+    if not font.is_file():
+        raise FileNotFoundError(f"OCR bridge font missing: {font}")
+    config["bridge_font"] = str(font)
+    models[str(font)] = sha256(font)
     for name in ("text_detector","layout_model"):
         config[name] = dict(registry[name])
         config[name]["model_path"] = str((ROOT/config[name]["model_path"]).resolve())
@@ -58,6 +65,11 @@ def prepare_backend(config_path, profile, env_root, *, preflight=True):
                 probe = inspect_environment(interpreters[f"{role}_python"],"cuda",require_ort=role=="text")
                 if probe["status"] == "FAILED":
                     raise RuntimeError(f"GPU preflight failed for {role}: {probe['errors']}")
+        probe = subprocess.run([interpreters["text_python"], "-c",
+            "import sys; from src.ocr.infrastructure.pdf.ocr_bridge import load_bridge_font; load_bridge_font(sys.argv[1])",
+            str(font)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=30)
+        if probe.returncode:
+            raise RuntimeError(f"OCR bridge preflight failed: {probe.stderr[-2400:]}")
     return {"config":config,"config_path":str(path),"device":"cuda", **interpreters,
             "model_hashes":models,"lock_hashes":locks,"source_fingerprint":source_fingerprint(),
             "phase_timeout":config["runtime"]["phase_timeout_seconds"],"lease_timeout":config["runtime"]["lease_timeout_seconds"]}

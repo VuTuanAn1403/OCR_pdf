@@ -85,6 +85,13 @@ class CoordinateChain:
         return result
 
 
+def page_display_chain(page) -> CoordinateChain:
+    """Unrotated crop-relative points -> visible, rotated page points."""
+    a, b, c, d, e, f = page.rotation_matrix
+    return CoordinateChain("pdf_native_crop_points").then(
+        "pdf_rotation", "pdf_display_points", [[a, c, e], [b, d, f], [0, 0, 1]])
+
+
 def render_coordinate_chain(page, image_shape) -> CoordinateChain:
     """PyMuPDF native crop-relative PDF points -> rendered pixels.
 
@@ -95,8 +102,5 @@ Raster scale uses actual output dimensions, including integer rounding.
     height, width = image_shape[:2]
     if min(height, width, page.rect.width, page.rect.height) <= 0:
         raise ValueError("Render dimensions must be positive")
-    a, b, c, d, e, f = page.rotation_matrix
-    rotation = [[a, c, e], [b, d, f], [0, 0, 1]]
     scale = [[width/page.rect.width, 0, 0], [0, height/page.rect.height, 0], [0, 0, 1]]
-    return (CoordinateChain("pdf_native_crop_points").then("pdf_rotation", "pdf_display_points", rotation)
-            .then("render_scale", "render_pixels", scale))
+    return page_display_chain(page).then("render_scale", "render_pixels", scale)

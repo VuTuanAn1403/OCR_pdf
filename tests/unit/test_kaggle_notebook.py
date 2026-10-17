@@ -234,12 +234,17 @@ def test_matrix_does_not_turn_incomplete_or_damaged_documents_into_zero_counts(t
     assert not list(namespace["RESULTS_DIR"].glob("MA_TRAN_DEM_TU_KHOA_*.xlsx"))
 
 
-def test_zip_can_be_downloaded_when_an_earlier_cell_failed_before_matrix_export(tmp_path, monkeypatch):
+@pytest.mark.parametrize("cross_volume", [False, True])
+def test_zip_can_be_downloaded_when_an_earlier_cell_failed_before_matrix_export(tmp_path, monkeypatch, cross_volume):
     namespace, cells = _namespace()
     results = tmp_path / "results"
     results.mkdir()
     (results / "error.log").write_text("Earlier cell failed", encoding="utf-8")
     namespace.update(RESULTS_DIR=results, ARCHIVE_PATH=tmp_path / "results.zip")
+    if cross_volume:
+        def other_drive(*args):
+            raise ValueError("path is on a different drive")
+        namespace["os"] = types.SimpleNamespace(path=types.SimpleNamespace(relpath=other_drive), replace=os.replace)
     links = []
     package = types.ModuleType("IPython")
     display_module = types.ModuleType("IPython.display")

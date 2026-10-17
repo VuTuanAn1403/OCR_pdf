@@ -127,7 +127,8 @@ def run_structure(request):
                 before = time.perf_counter()
                 if request["config"].get("ocr_source_policy") == "gpu_ocr_only_v1":
                     from src.ocr.infrastructure.pdf.ocr_bridge import ocr_bridge
-                    with ocr_bridge(pdf[page.page_num-1], page, request["config"]["render_dpi"]) as bridge:
+                    with ocr_bridge(pdf[page.page_num-1], page, request["config"]["render_dpi"],
+                                    font_path=request["config"].get("bridge_font")) as bridge:
                         page.blocks, page.tables, page.formulas = ProcessPageUseCase._enrich_structures(
                             context, bridge[0], page.page_num, page.page_type, page.blocks,
                             page.tables, page.regions, page.metadata)

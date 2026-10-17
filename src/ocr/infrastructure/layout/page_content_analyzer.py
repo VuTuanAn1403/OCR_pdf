@@ -47,6 +47,8 @@ class PageContentAnalyzer:
         self,
         meta: Dict[str, Any],
         doc_page: pymupdf.Page,
+        *,
+        display_coordinates: bool = False,
     ) -> List[Region]:
         """
         Returns a list of Region objects describing the content composition
@@ -61,6 +63,12 @@ class PageContentAnalyzer:
         char_count = meta.get("char_count", 0)
         native_extraction_failed = meta.get("native_extraction_failed", False)
 
+        def page_box(box):
+            rect = pymupdf.Rect(box)
+            if display_coordinates:
+                rect = rect * doc_page.rotation_matrix
+            return rect
+
         regions: List[Region] = []
         region_counter = 0
 
@@ -71,11 +79,12 @@ class PageContentAnalyzer:
                 raw_blocks = doc_page.get_text("blocks")
                 for b in raw_blocks:
                     if b[6] == 0 and b[4].strip():  # type 0 = text, non-empty
+                        rect = page_box(b[:4])
                         bb = BoundingBox(
-                            x0=round(b[0], 2),
-                            y0=round(b[1], 2),
-                            x1=round(b[2], 2),
-                            y1=round(b[3], 2),
+                            x0=round(rect.x0, 2),
+                            y0=round(rect.y0, 2),
+                            x1=round(rect.x1, 2),
+                            y1=round(rect.y1, 2),
                         )
                         if bb.area > 0:
                             text_block_bboxes.append(bb)
@@ -109,6 +118,7 @@ class PageContentAnalyzer:
         for rect in image_rects:
             if len(rect) < 4:
                 continue
+            rect = page_box(rect)
             bb = BoundingBox(
                 x0=round(rect[0], 2),
                 y0=round(rect[1], 2),
@@ -147,6 +157,9 @@ class PageContentAnalyzer:
         drawing_regions: List[Region] = []
         try:
             drawings = doc_page.get_drawings()
+            if display_coordinates:
+                drawings = [{**drawing, "rect": page_box(drawing["rect"])}
+                            if drawing.get("rect") is not None else drawing for drawing in drawings]
             if drawings:
                 drawing_regions = self._cluster_drawings(
                     drawings, page_num, page_area, text_block_bboxes, image_bboxes

@@ -10,6 +10,8 @@ BUNDLES = {
     "keywords.txt": "config/keywords.txt",
     "profiles.yaml": "config/profiles.yaml",
     "docling_structure_worker.py": "scripts/docling_structure_worker.py",
+    "fonts/NotoSans-Regular.ttf": "assets/fonts/NotoSans-Regular.ttf",
+    "fonts/OFL.txt": "assets/fonts/OFL.txt",
     **{f"hardware/{path.name}": f"config/hardware/{path.name}"
        for path in sorted((ROOT / "config/hardware").glob("*.yaml"))},
 }

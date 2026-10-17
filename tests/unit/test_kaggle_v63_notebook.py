@@ -236,7 +236,8 @@ def test_verification_refuses_damaged_or_unpublished_output(tmp_path, damage):
     assert not summary.exists()
 
 
-def test_zip_is_available_after_earlier_failure_and_excludes_external_runtime(tmp_path, monkeypatch):
+@pytest.mark.parametrize("cross_volume", [False, True])
+def test_zip_is_available_after_earlier_failure_and_excludes_external_runtime(tmp_path, monkeypatch, cross_volume):
     scope, cells = namespace()
     results, runtime = tmp_path / "results", tmp_path / "runtime"
     (results / "logs").mkdir(parents=True)
@@ -245,6 +246,10 @@ def test_zip_is_available_after_earlier_failure_and_excludes_external_runtime(tm
     (runtime / "weights.bin").write_bytes(b"model")
     scope.update(RESULTS_DIR=results, BATCH_DIR=results / "documents", ARCHIVE_PATH=tmp_path / "results.zip",
                  RUNTIME_ROOT=runtime)
+    if cross_volume:
+        def other_drive(*args):
+            raise ValueError("path is on a different drive")
+        scope["os"] = types.SimpleNamespace(path=types.SimpleNamespace(relpath=other_drive), replace=os.replace)
     package, display = types.ModuleType("IPython"), types.ModuleType("IPython.display")
     links = []
     display.FileLink, display.display = lambda value: value, links.append

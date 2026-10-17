@@ -3,3 +3,5 @@ include config/keywords.txt
 include config/hardware/*.yaml
 include scripts/docling_structure_worker.py
 include setup.py
+include assets/fonts/NotoSans-Regular.ttf
+include assets/fonts/OFL.txt
