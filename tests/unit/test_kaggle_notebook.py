@@ -92,10 +92,30 @@ def test_input_selection_handles_uppercase_extensions_and_duplicate_names(tmp_pa
 
 def test_missing_pdfs_fail_before_installing_anything(tmp_path):
     namespace, cells = _namespace()
-    namespace.update(INPUT_ROOT=tmp_path, RUNTIME_ROOT=tmp_path / "runtime")
+    namespace.update(INPUT_ROOT=tmp_path, RUNTIME_ROOT=tmp_path / "runtime", INPUTS_READY=True)
     with pytest.raises(FileNotFoundError, match="Add Input"):
         exec(cells["inputs"], namespace)
     assert not (tmp_path / "runtime").exists()
+    assert namespace["INPUTS_READY"] is False
+
+
+def test_setup_requires_successful_input_cell_and_config_rerun_invalidates_it(tmp_path):
+    namespace, cells = _namespace()
+    namespace["run_logged"] = lambda *a, **kw: pytest.fail("Must not install before input selection")
+    with pytest.raises(RuntimeError, match="cell 3"):
+        exec(cells["setup"], namespace)
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    (inputs / "report.pdf").write_bytes(b"fixture")
+    results = tmp_path / "results"
+    namespace.update(INPUT_ROOT=inputs, RUNTIME_ROOT=tmp_path / "runtime",
+                     RESULTS_DIR=results, LOG_DIR=results / "logs")
+    exec(cells["inputs"], namespace)
+    assert namespace["INPUTS_READY"] is True
+    exec(cells["parameters"], namespace)
+    assert namespace["INPUTS_READY"] is False
+    with pytest.raises(RuntimeError, match="Run All"):
+        exec(cells["setup"], namespace)
 
 
 def test_batch_checks_file_status_instead_of_only_process_exit_code(tmp_path):

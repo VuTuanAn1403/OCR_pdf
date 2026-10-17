@@ -112,10 +112,29 @@ def test_selection_stages_all_53_files_and_normalizes_colliding_stems(tmp_path):
 
 def test_missing_input_fails_before_runtime_installation(tmp_path):
     scope, cells = namespace()
-    scope.update(INPUT_ROOT=tmp_path, RUNTIME_ROOT=tmp_path / "runtime", RESULTS_DIR=tmp_path / "results")
+    scope.update(INPUT_ROOT=tmp_path, RUNTIME_ROOT=tmp_path / "runtime", RESULTS_DIR=tmp_path / "results", INPUTS_READY=True)
     with pytest.raises(FileNotFoundError, match="Add Input"):
         exec(cells["inputs"], scope)
     assert not (tmp_path / "runtime").exists()
+    assert scope["INPUTS_READY"] is False
+
+
+def test_setup_requires_successful_input_cell_and_config_rerun_invalidates_it(tmp_path):
+    scope, cells = namespace()
+    scope["run_logged"] = lambda *a, **kw: pytest.fail("Must not install before input selection")
+    with pytest.raises(RuntimeError, match="cell 3"):
+        exec(cells["setup"], scope)
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    (inputs / "report.pdf").write_bytes(b"fixture")
+    results = tmp_path / "results"
+    scope.update(INPUT_ROOT=inputs, RUNTIME_ROOT=tmp_path / "runtime", RESULTS_DIR=results)
+    exec(cells["inputs"], scope)
+    assert scope["INPUTS_READY"] is True
+    exec(cells["parameters"], scope)
+    assert scope["INPUTS_READY"] is False
+    with pytest.raises(RuntimeError, match="Run All"):
+        exec(cells["setup"], scope)
 
 
 def test_changed_pdf_gets_new_selection_and_cannot_overwrite_frozen_manifest(tmp_path):
@@ -168,7 +187,7 @@ def test_setup_refreshes_failed_checkout_before_batch_and_freezes_it_after_ledge
     python.touch()
     commands, revision = [], ["fixed-commit"]
     scope.update(RUNTIME_ROOT=runtime, RESULTS_DIR=results, LOG_DIR=results / "logs", BATCH_DIR=results / "documents",
-        INPUT_MAPPING=[{"document_id": "fixture"}], REFRESH_SOURCE=True, SYNC_GPU_ENVS=True,
+        INPUT_MAPPING=[{"document_id": "fixture"}], INPUTS_READY=True, REFRESH_SOURCE=True, SYNC_GPU_ENVS=True,
         sys=types.SimpleNamespace(platform="linux", executable=sys.executable),
         shutil=types.SimpleNamespace(which=lambda _: sys.executable),
         subprocess=types.SimpleNamespace(check_output=lambda command, **kwargs:

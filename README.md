@@ -387,6 +387,12 @@ File: [kaggle/ocr_pdf_v63_kaggle.ipynb](kaggle/ocr_pdf_v63_kaggle.ipynb). Import
 
 Notebook dùng GPU 0 với một worker, không tự chia qua hai GPU. Kiểm thử notebook (V6.3 và legacy) bao phủ chọn đủ 53 PDF, xử lý tên Unicode trùng, kiểm hash model, kiểm Excel/SQLite/receipt, bắt output hỏng và đóng ZIP sau lỗi, kể cả khi thư mục tạm Windows nằm khác ổ đĩa. Hai file cấu hình VietOCR được cố định CRLF trong `.gitattributes` để hash model không đổi khi clone Linux. Kiểm thử cục bộ không thay thế chạy đủ dataset trong một phiên Kaggle thực.
 
+#### `NameError: name 'STAGED_INPUT' is not defined`
+
+`STAGED_INPUT` được tạo khi cell 3 chọn và chuẩn bị PDF thành công. Lỗi này xuất hiện khi chạy cell cài đặt trước cell 3, tiếp tục sau khi cell 3 lỗi, hoặc chạy tiếp sau khi kernel bị khởi động lại. Chạy lại từ cell 1 bằng **Run All**; kiểm tra cell 3 đã in số PDF được chọn. Nếu báo không tìm thấy PDF, Add Input dataset và kiểm tra `INPUT_ROOT` trước khi chạy tiếp.
+
+Notebook mới kiểm tra trạng thái input trước khi clone/cài runtime và yêu cầu chuẩn bị lại input khi chạy lại cấu hình. Nếu màn hình có `ocr_pdf_results`, `/tmp/ocr_pdf_kaggle` và mục 5 “Chuẩn bị lệnh và kiểm tra kết quả”, đó là notebook legacy. Để chạy V6.3, import lại file `ocr_pdf_v63_kaggle.ipynb`. Dòng commit của Git chỉ xác nhận source đã clone; cập nhật source không thay đổi các cell trong notebook đang mở.
+
 #### Lỗi thiếu font và trang PDF xoay trong log Kaggle
 
 Hai traceback đã ghi nhận trong lượt chạy Kaggle ngày 17/10/2026:
