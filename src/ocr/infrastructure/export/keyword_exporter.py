@@ -58,6 +58,36 @@ class KeywordExporter:
         finally:
             workbook.close()
 
+    @staticmethod
+    def export_file_excel(report: KeywordReport, output_file: Path) -> Path:
+        workbook = Workbook()
+        try:
+            _build_summary_sheet(workbook, report)
+            _build_citation_sheet(workbook, report)
+            buffer = BytesIO()
+            workbook.save(buffer)
+            path = Path(output_file)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_bytes(path, buffer.getvalue())
+            return path
+        finally:
+            workbook.close()
+
+    @staticmethod
+    def export_batch_excel(reports: list[KeywordReport], output_file: Path) -> Path:
+        workbook = Workbook()
+        try:
+            _build_batch_summary_sheet(workbook, reports)
+            _build_batch_citation_sheet(workbook, reports)
+            buffer = BytesIO()
+            workbook.save(buffer)
+            path = Path(output_file)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_bytes(path, buffer.getvalue())
+            return path
+        finally:
+            workbook.close()
+
 
 # ─────────────────────────────────────────────────────────────────────
 # Sheet 1: Tong_hop  (Feature-matrix)
@@ -191,3 +221,121 @@ def _write_citation_cell(cell, citation) -> None:
         if after:
             segments.append(after)
         cell.value = " ".join(segments)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Batch Sheets: Tong_hop & Trich_dan_chi_tiet across multiple reports
+# ─────────────────────────────────────────────────────────────────────
+
+def _build_batch_summary_sheet(workbook: Workbook, reports: list[KeywordReport]):
+    ws = workbook.active
+    ws.title = "Tong_hop"
+    if not reports:
+        return
+
+    keywords = reports[0].keywords
+
+    # ── Header row ──
+    file_cell = ws.cell(1, 1, "File_name")
+    file_cell.font = _HEADER_FONT
+    file_cell.fill = _HEADER_FILL
+    file_cell.alignment = _CENTER
+    file_cell.border = _THIN_BORDER
+
+    for col_idx, kw in enumerate(keywords, 2):
+        cell = ws.cell(1, col_idx, kw.keyword)
+        cell.font = _HEADER_FONT_SM
+        cell.fill = _HEADER_FILL
+        cell.alignment = _CENTER_WRAP
+        cell.border = _THIN_BORDER
+
+    # ── Data rows ──
+    for row_idx, rep in enumerate(reports, 2):
+        name_cell = ws.cell(row_idx, 1, rep.document_id)
+        name_cell.border = _THIN_BORDER
+
+        for col_idx, kw in enumerate(rep.keywords, 2):
+            cell = ws.cell(row_idx, col_idx, kw.count)
+            cell.number_format = "#,##0"
+            cell.alignment = _CENTER
+            cell.border = _THIN_BORDER
+
+    # ── Total row ──
+    total_row = len(reports) + 2
+    tot_label = ws.cell(total_row, 1, "TỔNG CỘNG")
+    tot_label.font = _BOLD
+    tot_label.alignment = _CENTER
+    tot_label.border = _THIN_BORDER
+
+    for col_idx in range(2, len(keywords) + 2):
+        col_letter = get_column_letter(col_idx)
+        cell = ws.cell(total_row, col_idx, f"=SUM({col_letter}2:{col_letter}{total_row - 1})")
+        cell.font = _BOLD
+        cell.number_format = "#,##0"
+        cell.alignment = _CENTER
+        cell.border = _THIN_BORDER
+
+    # ── Column widths ──
+    max_name_len = max((len(r.document_id) for r in reports), default=20)
+    ws.column_dimensions["A"].width = max(24, max_name_len + 4)
+    for col_idx in range(2, len(keywords) + 2):
+        col_letter = get_column_letter(col_idx)
+        kw_len = len(keywords[col_idx - 2].keyword)
+        ws.column_dimensions[col_letter].width = max(8, min(22, kw_len + 2))
+
+    ws.freeze_panes = "B2"
+
+
+def _build_batch_citation_sheet(workbook: Workbook, reports: list[KeywordReport]):
+    ws = workbook.create_sheet("Trich_dan_chi_tiet")
+
+    # ── Header row ──
+    headers = ["STT", "Tên file", "Tên từ khóa", "Thuộc trang số", "Trích dẫn"]
+    col_widths = [8, 30, 28, 16, 90]
+    for col_idx, (title, width) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(1, col_idx, title)
+        cell.font = _HEADER_FONT
+        cell.fill = _HEADER_FILL
+        cell.alignment = _CENTER
+        cell.border = _THIN_BORDER
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+    all_cits: list[tuple[str, int, any]] = []
+    for rep in reports:
+        keyword_order = {kw.keyword.casefold(): i for i, kw in enumerate(rep.keywords)}
+        for c in rep.citations:
+            all_cits.append((rep.document_id, keyword_order.get(c.keyword.casefold(), 9999), c))
+
+    if not all_cits:
+        ws.freeze_panes = "A2"
+        return
+
+    # Sort by Document ID, then keyword order in keywords.txt, then page number
+    all_cits.sort(key=lambda item: (item[0], item[1], item[2].page_number))
+
+    for row_idx, (doc_id, _, cit) in enumerate(all_cits, 1):
+        row = row_idx + 1
+
+        # STT
+        ws.cell(row, 1, row_idx).alignment = _CENTER
+        ws.cell(row, 1).border = _THIN_BORDER
+
+        # Tên file
+        ws.cell(row, 2, doc_id).border = _THIN_BORDER
+
+        # Tên từ khóa
+        ws.cell(row, 3, cit.keyword).border = _THIN_BORDER
+
+        # Thuộc trang số
+        page_cell = ws.cell(row, 4, cit.page_number)
+        page_cell.alignment = _CENTER
+        page_cell.border = _THIN_BORDER
+
+        # Trích dẫn (with bold keyword via rich text)
+        cite_cell = ws.cell(row, 5)
+        cite_cell.alignment = _WRAP
+        cite_cell.border = _THIN_BORDER
+        _write_citation_cell(cite_cell, cit)
+
+    ws.freeze_panes = "A2"
+
