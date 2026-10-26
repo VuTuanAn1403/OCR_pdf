@@ -117,6 +117,7 @@ inputs/*
 output/*
 /output_finsbd/
 !output/.gitkeep
+!output/**/count_keywords_master.xlsx
 !examples/**
 !sample.pdf
 
