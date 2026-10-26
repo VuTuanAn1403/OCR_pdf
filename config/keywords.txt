@@ -23,14 +23,6 @@ báo cáo tín dụng
 thực tế tăng cường
 thực tế hỗn hợp
 thực tế ảo
-điện toán đám mây
-điện toán dòng
-điện toán đồ thị
-điện toán bộ nhớ
-điện toán bảo mật đa bên
-điện toán giống não
-điện toán xanh
-điện toán nhận thức
 kiến trúc hợp nhất
 đồng thời cấp tỷ
 lưu trữ cấp EB
@@ -38,7 +30,6 @@ Internet vạn vật
 hệ thống vật lý thông tin
 blockchain
 tiền tệ số
-điện toán phân tán
 công nghệ bảo mật riêng tư vi phân
 hợp đồng tài chính thông minh
 Internet di động
@@ -81,7 +72,6 @@ Công nghiệp 4.0
 Tự động hóa
 Số hóa
 An ninh mạng
-điện toán
 Sản xuất thông minh
 Hệ sinh thái số
 Ra quyết định dựa trên dữ liệu

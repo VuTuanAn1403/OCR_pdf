@@ -33,8 +33,14 @@ class CountKeywordsUseCase:
                                  f"run_batch.py --output {Path(doc_dir).parent} --recount")
         keywords = KeywordCounter.load_keywords(cls.resolve_keywords_file(keywords_file))
         source = Path(doc_dir) / "result.md"
-        report = KeywordCounter.count_keywords(source.read_text(encoding="utf-8-sig"), keywords,
-                                               document_id, str(source))
+        pages_dir = Path(doc_dir) / "pages"
+        report = KeywordCounter.count_keywords(
+            source.read_text(encoding="utf-8-sig"),
+            keywords,
+            document_id,
+            str(source),
+            pages_dir=pages_dir if pages_dir.is_dir() else None,
+        )
         # A standalone/cache refresh changes a hashed artifact. Renew only a
         # previously valid marker; never certify damaged OCR output as complete.
         validation_status = None

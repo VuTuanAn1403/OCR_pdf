@@ -68,18 +68,26 @@ def test_excel_report_contents_totals_and_refresh_without_changing_markdown(tmp_
     keywords.write_text("Đổi mới\n=SUM\nC++\nKhông có\n", encoding="utf-8")
     report = CountKeywordsUseCase.execute(document, "annual", keywords)
     assert report.total_matches == 4
-    workbook = load_workbook(document / "count_keywords.xlsx")
+    workbook = load_workbook(document / "count_keywords.xlsx", rich_text=True)
     try:
-        sheet = workbook.active
-        assert sheet.title == "Thống kê từ khóa"
-        assert sheet["A1"].value == "BÁO CÁO TẦN SUẤT TỪ KHÓA"
-        assert [sheet.cell(4, c).value for c in (1, 2, 3)] == [
-            "STT", "Từ khóa / Cụm từ", "Số lần xuất hiện"]
-        assert [(sheet.cell(r, 2).value, sheet.cell(r, 3).value) for r in range(5, 9)] == [
-            ("Đổi mới", 2), ("=SUM", 1), ("C++", 1), ("Không có", 0)]
-        assert sheet["B6"].data_type == "s"
-        assert sheet["B9"].value == "Tổng cộng"
-        assert sheet["C9"].value == 4
+        assert workbook.sheetnames == ["Tong_hop", "Trich_dan_chi_tiet"]
+        # Sheet 1: Tong_hop (Feature-matrix)
+        ws1 = workbook["Tong_hop"]
+        assert ws1.cell(1, 1).value == "File_name"
+        assert [ws1.cell(1, c).value for c in range(2, 6)] == ["Đổi mới", "=SUM", "C++", "Không có"]
+        assert ws1.cell(2, 1).value == "annual"
+        assert [ws1.cell(2, c).value for c in range(2, 6)] == [2, 1, 1, 0]
+
+        # Sheet 2: Trich_dan_chi_tiet
+        ws2 = workbook["Trich_dan_chi_tiet"]
+        assert [ws2.cell(1, c).value for c in range(1, 5)] == [
+            "STT", "Tên từ khóa", "Thuộc trang số", "Trích dẫn"]
+        # 4 citations: 2 for Đổi mới, 1 for =SUM, 1 for C++
+        assert ws2.max_row == 5  # 1 header + 4 rows
+        assert [ws2.cell(r, 1).value for r in range(2, 6)] == [1, 2, 3, 4]
+        assert [ws2.cell(r, 2).value for r in range(2, 6)] == [
+            "Đổi mới", "Đổi mới", "=SUM", "C++"]
+        assert [ws2.cell(r, 3).value for r in range(2, 6)] == [1, 1, 1, 1]
     finally:
         workbook.close()
     keywords.write_text("C++\n", encoding="utf-8")
@@ -108,3 +116,70 @@ def test_missing_result_markdown_is_reported(tmp_path):
     with pytest.raises(FileNotFoundError):
         CountKeywordsUseCase.execute(tmp_path, "missing")
     assert not (tmp_path / "count_keywords.xlsx").exists()
+
+
+def test_two_sheet_citations_with_pages_and_bold_keyword(tmp_path):
+    doc_dir = tmp_path / "doc_test"
+    doc_dir.mkdir()
+    pages_dir = doc_dir / "pages"
+    pages_dir.mkdir()
+
+    # Create page 2 and page 5
+    (pages_dir / "page-0002.md").write_text(
+        "# Trang 2\nDoanh nghiệp đẩy mạnh chuyển đổi số trong mọi hoạt động sản xuất kinh doanh.",
+        encoding="utf-8"
+    )
+    (pages_dir / "page-0005.md").write_text(
+        "# Trang 5\nỨng dụng trí tuệ nhân tạo và chuyển đổi số mang lại hiệu quả vượt bậc.",
+        encoding="utf-8"
+    )
+    # result.md combines both
+    (doc_dir / "result.md").write_text(
+        "# Trang 2\nDoanh nghiệp đẩy mạnh chuyển đổi số trong mọi hoạt động sản xuất kinh doanh.\n---\n"
+        "# Trang 5\nỨng dụng trí tuệ nhân tạo và chuyển đổi số mang lại hiệu quả vượt bậc.",
+        encoding="utf-8"
+    )
+
+    kw_file = tmp_path / "keywords.txt"
+    kw_file.write_text("Trí tuệ nhân tạo\nChuyển đổi số\nĐiện toán đám mây\n", encoding="utf-8")
+
+    report = CountKeywordsUseCase.execute(doc_dir, "doc_test", kw_file)
+    assert report.total_matches == 3  # 1 Trí tuệ nhân tạo + 2 Chuyển đổi số + 0 Điện toán đám mây
+    assert len(report.citations) == 3
+
+    wb = load_workbook(doc_dir / "count_keywords.xlsx", rich_text=True)
+    try:
+        assert wb.sheetnames == ["Tong_hop", "Trich_dan_chi_tiet"]
+        ws1 = wb["Tong_hop"]
+        assert ws1.cell(1, 1).value == "File_name"
+        assert ws1.cell(1, 2).value == "Trí tuệ nhân tạo"
+        assert ws1.cell(1, 3).value == "Chuyển đổi số"
+        assert ws1.cell(1, 4).value == "Điện toán đám mây"
+        assert ws1.cell(2, 1).value == "doc_test"
+        assert ws1.cell(2, 2).value == 1
+        assert ws1.cell(2, 3).value == 2
+        assert ws1.cell(2, 4).value == 0  # 0 count column is retained!
+
+        ws2 = wb["Trich_dan_chi_tiet"]
+        # Order must be: Trí tuệ nhân tạo (p5), Chuyển đổi số (p2), Chuyển đổi số (p5)
+        # Because "Trí tuệ nhân tạo" is first in keywords.txt, then "Chuyển đổi số"
+        # and for Chuyển đổi số, page 2 < page 5
+        rows = [
+            (ws2.cell(r, 1).value, ws2.cell(r, 2).value, ws2.cell(r, 3).value)
+            for r in range(2, 5)
+        ]
+        assert rows == [
+            (1, "Trí tuệ nhân tạo", 5),
+            (2, "Chuyển đổi số", 2),
+            (3, "Chuyển đổi số", 5),
+        ]
+
+        # Verify rich text citation formatting for row 2 (Trí tuệ nhân tạo)
+        cit_cell = ws2.cell(2, 4).value
+        # Should be a CellRichText containing bold TextBlock
+        bold_blocks = [block for block in cit_cell if getattr(getattr(block, "font", None), "b", False)]
+        assert len(bold_blocks) >= 1
+        assert bold_blocks[0].text.casefold() == "trí tuệ nhân tạo"
+    finally:
+        wb.close()
+
