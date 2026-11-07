@@ -731,7 +731,7 @@ class DocumentLayoutEngine:
 
     @staticmethod
     def _looks_like_signature_block(cells: List[TableCell]) -> bool:
-        """Keep auditor signatures and dates as text instead of a false table."""
+        """Keep auditor and executive signatures and dates as text instead of a false table."""
         raw = " ".join(cell.text for cell in cells).casefold()
         decomposed = unicodedata.normalize("NFD", raw)
         text = "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
@@ -741,8 +741,11 @@ class DocumentLayoutEngine:
             "kiem toan vien" in text,
             "tong giam doc" in text,
             "giay cndkhn" in text or "giay cndkh" in text,
+            "tran trong" in text,
+            "chu tich" in text,
+            "ban dieu hanh" in text,
         )
-        return sum(markers) >= 2
+        return sum(markers) >= 2 or ("tong giam doc" in text and "tran trong" in text)
 
     @staticmethod
     def _merge_wrapped_numeric_rows(cells: List[TableCell]) -> List[TableCell]:

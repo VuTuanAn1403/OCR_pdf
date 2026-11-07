@@ -6,6 +6,12 @@ Cập nhật 06/11/2026, Asia/Bangkok. HEAD `ad39fcd`, sạch sau đẩy main. F
 
 ## Kết quả mới
 
+- **Kế thừa Reading Order & Layout Tạp chí từ OCR_pdf_backup (Commit 05d3967)**:
+  - Nâng cấp `src/ocr_document/reading_order.py`: thay thế logic chia đôi tĩnh `mid_x` bằng **Dynamic Gutter Detection (`_detect_gutters`)** sử dụng Occupancy Histogram 1pt (loại bỏ 12% margin, yêu cầu `has_left` và `has_right`), hỗ trợ tự động N-cột tùy biến và ghép xen kẽ tiêu đề dàn trang (`_merge_multi_columns_with_spanning`).
+  - Nâng cấp `src/ocr_document/markdown_exporter.py`: vá chốt chặn `is_diagram_page`, bổ sung điều kiện `not any(len(b.text.strip()) > 150)` và từ khóa sơ đồ để triệt tiêu dương tính giả phá vỡ thứ tự đọc trên các trang bài viết ngắn.
+  - Nâng cấp `src/ocr_structure/document_layout_engine.py`: mở rộng nhận diện chữ ký lãnh đạo/điều hành (`_looks_like_signature_block`).
+  - Bổ sung test cases 3 cột và cột bất đối xứng tại `tests/unit/test_reading_order.py`. 262/262 unit test document/reading_order/keywords pass.
+
 - **Global Alias Rules**: seed có ngữ cảnh cho alias ngắn; 3 luồng literal/alias/Pending. Occurrence reject/revoke ưu tiên hơn rule. Rules snapshot + hash trong identity; đổi rule dùng analysis/output mới, không OCR. Companion v3/queue/ma trận/SQLite đọc kiểm trước acknowledge. Bản nháp 14 đã bỏ khẳng định accuracy/90%/99%/ba phút chưa đo và sửa notebook/detector.
 - CPU final `output/analysis_global_alias_final_20261106`: 9 PDF/938 trang, **165 literal, 15 alias chấp nhận, 3 loại trừ, 5 Pending/4 biến thể**. Oracle literal/rule độc lập khớp JSON/XLSX/SQLite revision 9, MD khớp nguồn. `analysis_global_alias_rules_20261106` là seed đầu 16 alias/4 Pending, STALE so seed có ngữ cảnh hiện tại; không sửa lại output đó. [Đọc kiểm cuối](../../scratch/dev_sessions/20261106-alias-rules-kaggle/real-analysis-readback-final.json).
 - Hồi quy hiện tại **2.245 pass/1 skip/7 warning** (full CPU + e2e 2-sheet, `20261106-201321-368e886d`), 545 file source/config/test giữ hash. Kiểm cùng replay 9/938 và 14 trang dẫn xuất. Chặn formula/boolean/cột thừa ở sheet mới; tài liệu lỗi giữ alias/Pending null. Không dùng test pass làm accuracy.

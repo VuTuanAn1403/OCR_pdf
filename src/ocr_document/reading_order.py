@@ -91,40 +91,139 @@ class ReadingOrderSorter:
         return result
 
     def _sort_body_blocks(self, blocks: List[TextBlock]) -> List[TextBlock]:
+        """
+        Sorts body blocks respecting multi-column layouts using dynamic
+        Gutter Detection. Supports 2-column and N-column layouts.
+        """
         if len(blocks) < 4:
             return self._sort_column(blocks)
 
-        mid_x = self.page_width / 2.0
-        # Check if blocks naturally separate into two distinct columns
-        left_col = []
-        right_col = []
+        # Step 1: Separate spanning blocks (full-width titles/paragraphs)
+        narrow_blocks = []
         spanning_blocks = []
 
         for b in blocks:
             x0, y0, x1, y1 = b.bbox
             width = x1 - x0
             if width > self.page_width * 0.65:
-                # Spans most of the page (title or wide paragraph)
                 spanning_blocks.append(b)
-            elif x1 <= mid_x + 20:
-                left_col.append(b)
-            elif x0 >= mid_x - 20:
-                right_col.append(b)
             else:
+                narrow_blocks.append(b)
+
+        # Step 2: Detect gutters (vertical white-space gaps) dynamically
+        gutters = self._detect_gutters(narrow_blocks, min_gutter_width=max(self.min_gap, 6.0))
+
+        if not gutters:
+            # No column structure detected → single column sort
+            return self._sort_column(blocks)
+
+        # Step 3: Filter out margin gutters (no content beyond them)
+        # A gutter touching the rightmost content edge is margin, not a column separator
+        if narrow_blocks:
+            valid_gutters = []
+            for gs, ge in gutters:
+                # Keep gutter only if there are blocks on BOTH sides
+                has_left = any((b.bbox[0] + b.bbox[2]) / 2 < gs for b in narrow_blocks)
+                has_right = any((b.bbox[0] + b.bbox[2]) / 2 > ge for b in narrow_blocks)
+                if has_left and has_right:
+                    valid_gutters.append((gs, ge))
+            gutters = valid_gutters
+
+        if not gutters:
+            return self._sort_column(blocks)
+
+        # Step 4: Build column ranges from gutters
+        # Sort gutters left to right
+        gutters.sort(key=lambda g: g[0])
+
+        # Create column boundaries: [0, gutter1_start] [gutter1_end, gutter2_start] ...
+        columns: list = []  # List[List[TextBlock]]
+        for i in range(len(gutters) + 1):
+            columns.append([])
+
+        # Assign each narrow block to the correct column
+        for b in narrow_blocks:
+            center_x = (b.bbox[0] + b.bbox[2]) / 2.0
+            col_idx = 0
+            for i, (gs, ge) in enumerate(gutters):
+                if center_x > ge:
+                    col_idx = i + 1
+                elif center_x >= gs:
+                    # Center is inside a gutter → spanning
+                    col_idx = -1
+                    break
+            if col_idx == -1:
                 spanning_blocks.append(b)
+            else:
+                b.column_index = col_idx
+                columns[col_idx].append(b)
 
-        # Is two-column layout prominent?
-        if len(left_col) >= 2 and len(right_col) >= 2:
-            # Group into vertical bands if there are spanning titles
-            # For simplicity and robustness, sort left column then right column
-            sorted_left = self._sort_column(left_col)
-            sorted_right = self._sort_column(right_col)
-            sorted_spanning = self._sort_column(spanning_blocks)
+        # Step 5: Verify multi-column layout is meaningful
+        populated_cols = [c for c in columns if len(c) >= 2]
+        if len(populated_cols) < 2:
+            # Not a real multi-column layout
+            return self._sort_column(blocks)
 
-            # Interleave spanning blocks by vertical position
-            return self._merge_columns_with_spanning(sorted_left, sorted_right, sorted_spanning)
+        # Step 6: Sort each column independently, then merge with spanning
+        sorted_columns = [self._sort_column(col) for col in columns if col]
+        sorted_spanning = self._sort_column(spanning_blocks)
 
-        return self._sort_column(blocks)
+        # For 2 columns, use existing merge logic
+        if len(sorted_columns) == 2:
+            return self._merge_columns_with_spanning(
+                sorted_columns[0], sorted_columns[1], sorted_spanning
+            )
+
+        # For N columns, merge all columns sequentially with spanning blocks
+        return self._merge_multi_columns_with_spanning(sorted_columns, sorted_spanning)
+
+    def _detect_gutters(self, blocks: List[TextBlock], min_gutter_width: float = 8.0) -> list:
+        """
+        Detect vertical gutters (white-space gaps) between columns by analyzing
+        the x-coverage histogram of all blocks (1pt resolution).
+
+        Returns list of (gutter_start, gutter_end) tuples, sorted left to right.
+        Only considers gaps in the inner page region (ignoring 12% margins).
+        """
+        if not blocks:
+            return []
+
+        # Create occupancy histogram (1pt bins across page width)
+        page_w = int(self.page_width) + 1
+        occupancy = [0] * page_w
+
+        for b in blocks:
+            x0, _, x1, _ = b.bbox
+            bin_start = max(0, int(x0))
+            bin_end = min(page_w - 1, int(x1))
+            for i in range(bin_start, bin_end + 1):
+                occupancy[i] += 1
+
+        # Find continuous gaps (occupancy == 0) in the inner region
+        # Ignore page margins (first 12% and last 12%)
+        margin = int(self.page_width * 0.12)
+
+        gutters = []
+        gap_start = None
+
+        for x in range(margin, page_w - margin):
+            if occupancy[x] == 0:
+                if gap_start is None:
+                    gap_start = x
+            else:
+                if gap_start is not None:
+                    gap_width = x - gap_start
+                    if gap_width >= min_gutter_width:
+                        gutters.append((float(gap_start), float(x)))
+                    gap_start = None
+
+        # Handle gap extending to end of scan range
+        if gap_start is not None:
+            gap_width = (page_w - margin) - gap_start
+            if gap_width >= min_gutter_width:
+                gutters.append((float(gap_start), float(page_w - margin)))
+
+        return gutters
 
     def _sort_column(self, blocks: List[TextBlock]) -> List[TextBlock]:
         """
@@ -194,4 +293,39 @@ class ReadingOrderSorter:
 
         result.extend(remaining_left)
         result.extend(remaining_right)
+        return result
+
+    def _merge_multi_columns_with_spanning(
+        self,
+        sorted_columns: list,
+        spanning: List[TextBlock]
+    ) -> List[TextBlock]:
+        """
+        Merge N sorted columns with spanning blocks, interleaving by vertical position.
+        Columns are read left-to-right: all of column 0 before column 1, etc.,
+        with spanning blocks inserted at their vertical position.
+        """
+        if not spanning:
+            result = []
+            for col in sorted_columns:
+                result.extend(col)
+            return result
+
+        result = []
+        sorted_span = sorted(spanning, key=lambda b: b.bbox[1])
+        remaining = [list(col) for col in sorted_columns]
+
+        for span in sorted_span:
+            span_y = span.bbox[1]
+            # Flush all column blocks above this spanning block
+            for col in remaining:
+                before = [b for b in col if b.bbox[3] <= span_y]
+                result.extend(before)
+                col[:] = [b for b in col if b.bbox[3] > span_y]
+            result.append(span)
+
+        # Flush remaining blocks from all columns
+        for col in remaining:
+            result.extend(col)
+
         return result
