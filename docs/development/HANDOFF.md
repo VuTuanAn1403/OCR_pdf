@@ -6,6 +6,17 @@ Cập nhật 06/11/2026, Asia/Bangkok. HEAD `ad39fcd`, sạch sau đẩy main. F
 
 ## Kết quả mới
 
+- **Tái tạo Bảng Tài chính Hình học Xác định (FinancialTableReconstructor)**:
+  - Bổ sung module mới `src/ocr_structure/financial_table_reconstructor.py`: Giải quyết triệt để vấn đề bảng báo cáo tài chính không viền (borderless), tiêu đề phân cấp nhiều tầng (multi-level spanning header) và mô tả chỉ tiêu rớt dòng (wrapped text).
+  - Thuật toán toán học:
+    1. **Phân cụm trục số căn phải (Right-Aligned Numeric Clustering)**: Dùng tọa độ $x_1$ của các số tiền/phần trăm để xác định tuyệt đối các cột số liệu, không phụ thuộc vào đường kẻ bảng.
+    2. **Phân tầng Header tự động & Leaf-Header Anchors**: So sánh độ bao phủ khoảng đoạn thẳng $[x_0, x_1]$ của tiêu đề cấp trên với các dải cột để tự động cấp phát `colspan` chuẩn xác (ví dụ mốc ngày `30/06/2025` trùm lên 2 hoặc 4 cột con); khám phá các cột văn bản xen kẽ và ở lề phải dựa trên tiêu đề con chi tiết nhất.
+    3. **Gom hàng theo Mỏ neo số liệu (Anchor-based Row Clustering)**: Tự động gộp các dòng mô tả công ty dài 2-3 dòng vào cùng một ô hàng, đối diện chuẩn xác với các con số tài chính bên phải, triệt tiêu lỗi cắt nát chữ thành các hàng rỗng.
+    4. **Chuẩn hóa nhãn tiếng Việt & dấu ngắt (`strip_accents`)**: Lọc bỏ phần đầu/chân trang; nhận diện đúng footnote (`*`), prose break và tổng cộng kế toán mà không nhầm `Công ty` với `Cộng`.
+  - Tích hợp vào `src/ocr_structure/document_layout_engine.py` (ưu tiên tái tạo bảng tài chính trước heuristic cũ) và `src/ocr_structure/enrichment.py` (bảo vệ bảng hình học xác định không bị ghi đè bởi model TableFormer).
+  - Kiểm thử thực chiến trực tiếp trên ảnh BCTC Mía đường Lam Sơn (trang 102 - 93 blocks qua RapidOCR): Tái tạo thành công 3/3 bảng biểu thành định dạng Markdown (Pipe và Box) với độ chuẩn xác tuyệt đối các cột số liệu.
+  - Bổ sung test suites tại `tests/unit/structure/test_financial_table_reconstructor.py`. 200/200 test cases unit structure & document đạt 100% PASS. Báo cáo chi tiết: `bao_cao_nang_cap_trich_xuat_bang_hinh_hoc.md`.
+
 - **Kế thừa Reading Order & Layout Tạp chí từ OCR_pdf_backup (Commit 05d3967)**:
   - Nâng cấp `src/ocr_document/reading_order.py`: thay thế logic chia đôi tĩnh `mid_x` bằng **Dynamic Gutter Detection (`_detect_gutters`)** sử dụng Occupancy Histogram 1pt (loại bỏ 12% margin, yêu cầu `has_left` và `has_right`), hỗ trợ tự động N-cột tùy biến và ghép xen kẽ tiêu đề dàn trang (`_merge_multi_columns_with_spanning`).
   - Nâng cấp `src/ocr_document/markdown_exporter.py`: vá chốt chặn `is_diagram_page`, bổ sung điều kiện `not any(len(b.text.strip()) > 150)` và từ khóa sơ đồ để triệt tiêu dương tính giả phá vỡ thứ tự đọc trên các trang bài viết ngắn.

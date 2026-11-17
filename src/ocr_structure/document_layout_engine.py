@@ -147,7 +147,18 @@ class DocumentLayoutEngine:
                         if t:
                             tables.append(t)
 
-        # 3. Scanned / OCR aligned table detection from remaining blocks
+        # 3. Deterministic geometric reconstruction for financial statement tables
+        page_w = float(page.rect.width) if page and hasattr(page, "rect") else 600.0
+        page_h = float(page.rect.height) if page and hasattr(page, "rect") else 800.0
+
+        from ocr_structure.financial_table_reconstructor import FinancialTableReconstructor
+        fin_reconstructor = FinancialTableReconstructor()
+        fin_tables = fin_reconstructor.reconstruct_tables(blocks, page_w, page_h, page_num)
+        for ft in fin_tables:
+            if not self.is_block_inside_any_table(ft.bbox, tables):
+                tables.append(ft)
+
+        # 4. Scanned / OCR aligned table detection from remaining blocks
         # Support Two-Up page subpage splitting (e.g. HAR p40 Left: Tài Sản, Right: Nguồn Vốn)
         is_two_up = False
         split_x = 0.0

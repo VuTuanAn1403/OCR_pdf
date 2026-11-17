@@ -76,6 +76,9 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
                     cell.text = " ".join(matched)
     # Replace only overlapping heuristic tables. Unmatched tables and text
     # remain, including when Docling finds no structures.
+    # Deterministic geometric financial tables take precedence over noisy model tables.
+    geo_tables = [t for t in tables if getattr(t, "engine", "") == "deterministic_geometry"]
+    model_tables = [m for m in model_tables if not block_is_covered(m.bbox, geo_tables, 0.5)]
     tables = [table for table in tables if not block_is_covered(table.bbox, model_tables, 0.5)] + model_tables
     # Freeze formula ownership at the point where the original text is
     # replaced. LaTeX need not equal the OCR transcription byte-for-byte.
