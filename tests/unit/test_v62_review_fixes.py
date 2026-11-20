@@ -204,7 +204,9 @@ def test_profile_defaults_are_legacy_and_invalid_settings_are_rejected():
 
 
 def test_legacy_export_preserves_selected_sorter_and_removes_stale_sidecars(tmp_path):
-    blocks = [b(f"Column {c}, line {r} content.", [40+c*170, 150+r*18, 190+c*170, 160+r*18]) for c in range(3) for r in range(10)]
+    # A 4-point gutter separates XY-cut's columns but stays below the
+    # heuristic sorter's gutter threshold, keeping the export probe distinct.
+    blocks = [b(f"Column {c}, line {r} content.", [40+c*154, 150+r*12, 190+c*154, 160+r*12]) for c in range(3) for r in range(10)]
     outputs = {}
     for method in ("heuristic", "xycut"):
         sorted_blocks = ReadingOrderSorter(method=method).sort_blocks(copy.deepcopy(blocks))
@@ -214,7 +216,8 @@ def test_legacy_export_preserves_selected_sorter_and_removes_stale_sidecars(tmp_
         outputs[method] = [item["text_raw"] for item in extraction["pages"][0]["items"]]
         assert outputs[method] == [block.text for block in sorted_blocks]
         assert not (out / "layout_order.json").exists()
-    assert outputs["heuristic"] != outputs["xycut"]
+    assert outputs["heuristic"] == [f"Column {c}, line {r} content." for r in range(10) for c in range(3)]
+    assert outputs["xycut"] == [f"Column {c}, line {r} content." for c in range(3) for r in range(10)]
     modern = make_doc(copy.deepcopy([blocks]))
     out = ExportDocumentUseCase.execute(modern, tmp_path / "reuse", assets_mode="none", document_layout={"method": NEW})
     assert (out / "furniture.json").exists()
