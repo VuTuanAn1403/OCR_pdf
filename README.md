@@ -189,12 +189,14 @@ Gắn ZIP qua Kaggle Input, điền `SOURCE_ARCHIVE` cùng `SOURCE_ARCHIVE_SHA25
 
 ## Kiểm chứng
 
+Hồi quy đầy đủ cần dependency legacy như [workflow CI](.github/workflows/tests.yml). Dùng môi trường kiểm thử riêng:
+
 ```powershell
-# Cài dependency test khi cần
-.\.venv\Scripts\python.exe -m pip install -e ".[app,dev]" pytest
+py -3.11 -m venv .venv-test
+.\.venv-test\Scripts\python.exe -m pip install -e ".[legacy,test]" --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Hồi quy unit, scientific và legacy compatibility
-.\.venv\Scripts\python.exe scripts/run_pytest_scratch.py tests/unit tests/scientific tests/legacy_compat -q --capture=fd
+.\.venv-test\Scripts\python.exe scripts/run_pytest_scratch.py tests/unit tests/scientific tests/legacy_compat -q --capture=fd
 
 # Registry và bản đồ kiến thức
 .\.venv\Scripts\python.exe scripts/check_knowledge_map.py --check
@@ -203,6 +205,8 @@ Gắn ZIP qua Kaggle Input, điền `SOURCE_ARCHIVE` cùng `SOURCE_ARCHIVE_SHA25
 .\.venv\Scripts\python.exe scripts/smoke_unified.py --output output/smoke_v8_001
 .\.venv\Scripts\python.exe scripts/audit_batch_outputs.py --output output/smoke_v8_001 --report scratch/smoke_v8_001_audit.json --validate
 ```
+
+Bản kiểm chứng ngày 21/11/2026: [kết quả hồi quy và identity mã](benchmark/evidence/v8_publication_20261121.json). Log/JUnit gốc được lưu cục bộ; bản tóm tắt công khai giữ lệnh, kết quả và hash để đối chiếu.
 
 Test pass, `SUCCEEDED`, confidence hoặc audit artifact không chứng minh độ chính xác trên tài liệu thật. Nghiệm thu cần GT độc lập, input/config/code/model/runtime được nhận dạng và protocol đo có thể kiểm lại. Giữ `NOT_EVALUATED` khi thiếu bằng chứng; cổng dấu 99,99% chưa được xác nhận đạt.
 

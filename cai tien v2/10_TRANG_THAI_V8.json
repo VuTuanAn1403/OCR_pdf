@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0",
   "pipeline_version": "8.0.0",
-  "verified_head": "52579a29ac005a88be8dfe118cfdf1e24afa0ea2",
-  "last_verified": "2026-11-20",
-  "verified_scope": "20/11 HEAD 52579a2 + working tree: tách module bảng, extraction fingerprint 6b3f843e93d762ae; 2776 passed/1 skipped; 28 replay/7 trang OCR frozen khớp trước-sau, API giữ nguyên. Smoke GPU 54fd0627ade536e2 và khóa 20261119-002 là lịch sử; không sửa output/lock cũ, chưa nghiệm thu accuracy mới. V8 vẫn 38 DONE/11 pha DONE.",
+  "verified_head": "b575c4273b97e7b425ca8a5ed0077c980f489d1a",
+  "last_verified": "2026-11-21",
+  "verified_scope": "21/11 mã b575c42: README v8, bảng đã tách module/rules chung; hợp nhất OCR_pdf/main@37ca301, giữ cải tiến reading-order/Markdown. Extraction 979becd0fef174a1; 2778 passed/1 skipped. Bằng chứng: benchmark/evidence/v8_publication_20261121.json. Smoke GPU 54fd0627ade536e2 và khóa 20261119-002 là lịch sử; không sửa output/lock cũ, chưa nghiệm thu accuracy mới. V8 vẫn 38 DONE/11 pha DONE.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",

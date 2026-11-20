@@ -1,0 +1,242 @@
+{
+  "schema_version": "v8-publication-verification-v1",
+  "date": "2026-11-21",
+  "timezone": "Asia/Bangkok",
+  "repository": "https://github.com/VuTuanAn1403/OCR_pdf",
+  "target_branch": "main",
+  "verified_code_commit": "b575c4273b97e7b425ca8a5ed0077c980f489d1a",
+  "merged_remote_commit": "37ca301304d84bfc4cc0d2cca3a296d513bb8ec7",
+  "code_fingerprints": {
+    "extraction": "979becd0fef174a1",
+    "analysis": "bd54151d5ee5bc7d",
+    "publication": "147ed7c15c13195a"
+  },
+  "runtime": {
+    "python": "3.11.16",
+    "platform": "Windows-10-10.0.26200-SP0"
+  },
+  "files_sha256": {
+    "README.md": "45b89511f1d5c06a916fd948d394fb856cdd16af2a8357e2737c99d721d40823",
+    "kaggle/ocr_pdf_kaggle.ipynb": "97db575406b0c8e56ec7c078f7da2406d919b151a5bcf72ca2274da69ecf0489",
+    "config/profiles.yaml": "6a925c3109284e2abe11e3b190982ed43d73fb76142ddae9adff180326b422ef",
+    "config/alias_rules.json": "06d118f423d47d3a30a0587832db3267b3f92164390aa29aa1dcfad4be78aae4",
+    "models/v62/runtime-models.json": "602e75b77b7840a69e3272f365be51ba0c9297149914cd377c78dd11b85341af",
+    "tests/unit/test_v62_review_fixes.py": "6434897fdddf8f09f65ce66cc08b6b7e0e92bca33ff77c46f3f995425d28c130"
+  },
+  "checks": {
+    "merged_targeted": {
+      "git_head": "eb0384692096d1cedba36d3590d691fe6e250523",
+      "exit_code": 0,
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit/test_reading_order.py",
+        "tests/unit/test_kaggle_v63_notebook.py",
+        "tests/unit/test_kaggle_global_alias.py",
+        "tests/unit/structure/test_financial_table_reconstructor.py",
+        "tests/unit/structure/test_financial_table_integration.py",
+        "tests/unit/test_import_contracts.py",
+        "-q",
+        "--capture=fd",
+        "--tb=short",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261120-231709-ee0cd722\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261120-231709-ee0cd722\\evidence\\junit.xml"
+      ],
+      "counts": {
+        "tests": 82,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 82
+      },
+      "seconds": 21.633,
+      "skipped_cases": [],
+      "local_evidence": {
+        "path": "scratch/runs/20261120-231709-ee0cd722",
+        "availability": "LOCAL_ONLY",
+        "sha256": {
+          "run.json": "d604c043f0bbadda81149bcb3a6e2560e9363925765e3320338ca9a5e6fa73e4",
+          "logs/pytest.log": "5232adcde7a50a213c9739cfb4aa1de9a538375b85afdb767a27cdd53cd72067",
+          "evidence/junit.xml": "0e8f635281c1c958145ff7900810d538fa8cad75393dd54d40595e8a1c442e73"
+        }
+      }
+    },
+    "export_order_regression": {
+      "git_head": "eb0384692096d1cedba36d3590d691fe6e250523",
+      "exit_code": 0,
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit/test_v62_review_fixes.py",
+        "tests/unit/test_reading_order.py",
+        "-q",
+        "--capture=fd",
+        "--tb=short",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-001014-9c3737e2\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-001014-9c3737e2\\evidence\\junit.xml"
+      ],
+      "counts": {
+        "tests": 37,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 37
+      },
+      "seconds": 11.055,
+      "skipped_cases": [],
+      "local_evidence": {
+        "path": "scratch/runs/20261121-001014-9c3737e2",
+        "availability": "LOCAL_ONLY",
+        "sha256": {
+          "run.json": "f5d5e476e16a96c811e3a342324238cbad14ed426c0376cd060fbc7dbe8127c6",
+          "logs/pytest.log": "db9de3ea55eafa0a8c3a49181fb11831082f2fcb0a07301f4dcbad295738877c",
+          "evidence/junit.xml": "17342765029c286a7e8b034fd9f292845ede80325708c7b697cd7d8d158ebdc8"
+        }
+      },
+      "working_tree_note": "Test đã sửa trong working tree của eb03846 khi chạy; sau đó commit nguyên diff thành b575c42. Hash test cuối được ghi trong files_sha256."
+    },
+    "full_regression": {
+      "git_head": "b575c4273b97e7b425ca8a5ed0077c980f489d1a",
+      "exit_code": 0,
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit",
+        "tests/scientific",
+        "tests/legacy_compat",
+        "-q",
+        "--capture=fd",
+        "--tb=short",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-001054-97c87f12\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-001054-97c87f12\\evidence\\junit.xml"
+      ],
+      "counts": {
+        "tests": 2779,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 2778
+      },
+      "seconds": 513.757,
+      "skipped_cases": [
+        {
+          "test": "test_real_linux_venv_package_is_lost_only_when_python_symlink_is_resolved",
+          "reason": "Real symlinked Python venv regression runs on Linux CI"
+        }
+      ],
+      "local_evidence": {
+        "path": "scratch/runs/20261121-001054-97c87f12",
+        "availability": "LOCAL_ONLY",
+        "sha256": {
+          "run.json": "c0ae74ef8e793c8f6f746f61598da4f1b99111658a4c88298d4c4efef4e739d8",
+          "logs/pytest.log": "5ce9afbfd957fc21c0141b178afd23ec7aa11c20dd848a04745ca325bc63448b",
+          "evidence/junit.xml": "28bf1f136d8068259c038cb19146d68be5c8b52f5f197de7baa51b022d0ceadb"
+        }
+      }
+    },
+    "knowledge_map_regression": {
+      "git_head": "b575c4273b97e7b425ca8a5ed0077c980f489d1a",
+      "exit_code": 0,
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit/test_check_knowledge_map.py",
+        "-q",
+        "--capture=fd",
+        "--tb=short",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-001957-25d974fa\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-001957-25d974fa\\evidence\\junit.xml"
+      ],
+      "counts": {
+        "tests": 36,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 36
+      },
+      "seconds": 23.849,
+      "skipped_cases": [],
+      "local_evidence": {
+        "path": "scratch/runs/20261121-001957-25d974fa",
+        "availability": "LOCAL_ONLY",
+        "sha256": {
+          "run.json": "d4cb3d547edb162ff1d6fee0585a0e8ad78b098a60b0cfc61024f8538cc9f9ee",
+          "logs/pytest.log": "1e2b7ac4553687bf040b330c6c24c17d6323f828ac741dd21958900fa4ecfeb1",
+          "evidence/junit.xml": "365ed48d33c0020bafd88550788c6b7d17d407891b25e3901a5d70af8bdc9977"
+        }
+      }
+    }
+  },
+  "resolved_regression": {
+    "initial_run": "scratch/runs/20261120-231851-d529cedb",
+    "initial_result": {
+      "passed": 2777,
+      "failed": 1,
+      "skipped": 1
+    },
+    "test": "tests/unit/test_v62_review_fixes.py::test_legacy_export_preserves_selected_sorter_and_removes_stale_sidecars",
+    "resolution": "Mẫu rãnh 4 pt và khoảng hàng 2 pt tạo hai thứ tự khác nhau; kiểm thứ tự kỳ vọng cụ thể và bảo toàn thứ tự trong exporter. Không đổi mã sản phẩm để ép test qua."
+  },
+  "scope": {
+    "accuracy_on_real_documents": "NOT_EVALUATED",
+    "new_gpu_smoke_on_this_identity": "NOT_EVALUATED",
+    "github_actions": "NOT_EVALUATED",
+    "note": "Hồi quy cục bộ không chứng minh accuracy OCR, không nâng cổng dấu hoặc chất lượng từ trạng thái registry. Không sửa input, model weights, output hay receipt lịch sử."
+  },
+  "documentation_checks": {
+    "readme_internal_links": 20,
+    "missing_internal_links": [],
+    "code_fences_balanced": true,
+    "registry_commands": [
+      ".venv/Scripts/python.exe scripts/check_knowledge_map.py --render",
+      ".venv/Scripts/python.exe scripts/check_knowledge_map.py --check"
+    ],
+    "registry_exit_code": 0,
+    "registry_errors": 0,
+    "registry_warnings": 0,
+    "registry_stale": 0
+  },
+  "files_sha256_scope": "Byte của file trong checkout Windows khi kiểm thử; có thể khác blob Git do CRLF/LF. git_files ghi riêng identity byte được công bố lên GitHub.",
+  "git_files": {
+    "README.md": {
+      "blob": "ecb631dc1ed41e61d2c5b6186b6e0e2f87bdd90f",
+      "sha256": "45b89511f1d5c06a916fd948d394fb856cdd16af2a8357e2737c99d721d40823"
+    },
+    "kaggle/ocr_pdf_kaggle.ipynb": {
+      "blob": "fa5717bc35692a612166e487c1f95c069f63af05",
+      "sha256": "97db575406b0c8e56ec7c078f7da2406d919b151a5bcf72ca2274da69ecf0489"
+    },
+    "config/profiles.yaml": {
+      "blob": "35fd9b8b6c9b16ce476985ed1039da08b3ccfdf1",
+      "sha256": "8ae3a06662736eb421669342871e7e1a9aac71cd84181d2e6c524ab47f3f3862"
+    },
+    "config/alias_rules.json": {
+      "blob": "dd587723f6d3ffb6dca0d4f7e421adb05824aa87",
+      "sha256": "06d118f423d47d3a30a0587832db3267b3f92164390aa29aa1dcfad4be78aae4"
+    },
+    "models/v62/runtime-models.json": {
+      "blob": "e0cf312543129da8fc1d89220eac308dedffaae9",
+      "sha256": "602e75b77b7840a69e3272f365be51ba0c9297149914cd377c78dd11b85341af"
+    },
+    "tests/unit/test_v62_review_fixes.py": {
+      "blob": "e4fcf768a1ed46c2f351fad67e67c1e445fcb8ee",
+      "sha256": "eb5de166201062e15cc80e2d81fd6adb539e9d14efb0657b5360600df6e6200a"
+    }
+  }
+}
