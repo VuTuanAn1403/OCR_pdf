@@ -76,6 +76,21 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
                     cell.text = " ".join(matched)
     # Replace only overlapping heuristic tables. Unmatched tables and text
     # remain, including when Docling finds no structures.
+    geometric = [table for table in tables
+                 if table.engine == "deterministic_geometry"
+                 and table.provenance.get("method") == "financial-geometry-v1"
+                 and table.provenance.get("source_coverage") == "COMPLETE"
+                 and table.provenance.get("numeric_guard") == "PRESERVED"]
+    # Preserve only a source-checked grid for the same region. A large model table
+    # spanning unrelated material must not be discarded on a one-way overlap test.
+    preserved = [table for table in geometric if any(
+        block_is_covered(model.bbox, [table], 0.8) and block_is_covered(table.bbox, [model], 0.8)
+        for model in model_tables)]
+    model_tables = [model for model in model_tables if not any(
+        block_is_covered(model.bbox, [table], 0.8) and block_is_covered(table.bbox, [model], 0.8)
+        for table in preserved)]
+    if preserved:
+        meta["docling_structure"]["preserved_geometric_tables"] = [table.table_id for table in preserved]
     tables = [table for table in tables if not block_is_covered(table.bbox, model_tables, 0.5)] + model_tables
     # Freeze formula ownership at the point where the original text is
     # replaced. LaTeX need not equal the OCR transcription byte-for-byte.

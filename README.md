@@ -1,224 +1,216 @@
-# OCR PDF v7.0 — Pipeline Xử Lý Báo Cáo Tài Chính & Thống Kê Từ Khóa Đa Tầng
+# OCR PDF v8.0
 
-Dự án xử lý và chuyển đổi Báo cáo Tài chính (BCTC) PDF tiếng Việt quét/chụp thành **Markdown cấu trúc**, **JSON có bằng chứng tọa độ/nguồn gốc (provenance)**, và **Ma trận Excel thống kê từ khóa đa tầng**.
+Chuyển PDF báo cáo tài chính tiếng Việt thành Markdown, JSON có bằng chứng nguồn và Excel đếm từ khóa. Pipeline sản phẩm dùng OCR GPU toàn bộ trang; CPU điều phối, xuất tài liệu, phân tích từ khóa và công bố ma trận qua SQLite.
 
-Kiến trúc v7.0 kế thừa pipeline toàn trang có gia tốc GPU và tích hợp toàn diện các cải tiến từ hồ sơ **Cải Tiến V7.0** (Tài liệu 12, 13, 14).
+Phiên bản pipeline: **8.0.0**. Cấu hình duy nhất là [`config/profiles.yaml`](config/profiles.yaml), profile `unified_gpu_full_ocr`. Tiến độ và giới hạn chất lượng lấy từ [registry v8](cai%20tien%20v2/10_TRANG_THAI_V8.json); hoàn tất lộ trình kỹ thuật không đồng nghĩa đã nghiệm thu accuracy 100%.
+
+## Luồng xử lý
 
 ```text
-PDF Đầu Vào 
-   │
-   ▼
-[Pha A: OCR GPU] ──► (PP-OCRv4 ONNX Detection + VietOCR Seq2Seq + Heron Layout)
-   │
-   ▼ (Giải phóng hoàn toàn tiến trình Pha A & VRAM)
-[Pha B: Cấu Trúc Bảng Docling GPU] ──► (TableFormer + CodeFormula trên Bridge PDF bảo toàn chữ)
-   │
-   ▼ (Giải phóng hoàn toàn tiến trình Pha B & VRAM)
-[Pha C: Xuất Bản & Phân Tích CPU] ──► (Markdown, JSON, Plain Text, Ghép bảng an toàn)
-   │
-   ▼
-[Đếm Từ Khóa 3 Luồng] ──► (Tier 1 Literal + Tier 2 Global Alias + Pending Queue)
-   │
-   ▼
-[Xuất Ma Trận Excel & Đồng Bộ SQLite] ──► Chuyển sang PDF tiếp theo
+PDF gốc, cấu hình, từ điển và model đã nhận dạng
+  → Pha A GPU: PP-OCRv6_medium_det ONNX + VietOCR vgg_transformer
+               + PP-DocLayout_plus-L ONNX + tái dựng bảng hình học
+  → xác minh cây tiến trình A đã thoát
+  → Pha B GPU: Docling trên bridge ảnh + chữ OCR, giữ Heron cho layout pha B
+               + TableFormer / CodeFormula theo cấu hình
+  → xác minh cây tiến trình B đã thoát
+  → CPU: ghép tài liệu, xuất Markdown/JSON, xác minh OCR receipt
+  → một bước hoàn tất keyword: Literal / Tier 2 / Pending, Excel riêng
+  → SQLite prepare → ghi ma trận → đọc kiểm → acknowledge
+  → PDF tiếp theo
 ```
 
----
+OCR mới yêu cầu NVIDIA CUDA và xử lý đủ mọi trang. Thiếu GPU là lỗi; CPU vẫn có thể phân tích lại từ khóa trên extraction đã xác minh. PDF gốc, `text_raw`, source ID, bbox và bằng chứng số được giữ để truy vết.
 
-## 🌟 Điểm Mới và Các Cải Tiến Nổi Bật Ở Phiên Bản v7.0
+## Công nghệ hiện hành
 
-### 1. Tự Động Hóa Global Alias Rules & Thống Kê 3 Luồng (Tài liệu 14)
-- **Tách bạch 3 luồng đếm rõ ràng**:
-  - **Tier 1 (Literal)**: Đếm chuỗi con chính xác nguyên bản, bất biến (bảo toàn tuyệt đối 165 matches trên 9 BCTC chuẩn).
-  - **Tier 2 (Auto-Whitelist)**: Tự động nhận diện và tính điểm các biến thể từ khóa hợp lệ thông qua bộ quy tắc toàn cục [`config/alias_rules.json`](config/alias_rules.json) với chuẩn hóa Unicode NFC + casefold (khôi phục các biến thể viết hoa, viết thường, hoặc tổ hợp chuẩn như *Trí tuệ nhân tạo*).
-  - **Pending Queue (Chờ duyệt)**: Tự động trích xuất các biến thể nghi vấn (lỗi gõ phím, ngắt dòng giữa từ, dấu mờ) vào file [`new_suspicions_queue.json`](config/alias_rules.json) kèm số trang, tọa độ và ngữ cảnh lân cận (±10 từ) để người vận hành kiểm duyệt an toàn, không suy diễn bừa bãi.
-- **Ma trận Excel 6 Sheet Hoàn Chỉnh**:
-  - Xuất file `MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx` gồm: `Ma trận từ khóa`, `Dem_Tier2`, `Cho_duyet`, `Tong_sau_duyet`, `Trich_dan_chi_tiet` (in đậm từ khớp), và `Trich_dan_Tier2`.
+| Thành phần | Triển khai |
+| --- | --- |
+| Phát hiện chữ | PP-OCRv6_medium_det ONNX, CUDA |
+| Nhận dạng chữ | VietOCR `vgg_transformer`, retry dấu/token ngắn theo profile |
+| Layout pha A | PP-DocLayout_plus-L ONNX |
+| Cấu trúc pha B | Docling trên `raster-plus-gpu-text-v1`, Heron/TableFormer/CodeFormula |
+| Bảng tài chính không viền | Mép phải số, leaf headers, colspan, nhãn nhiều dòng; kiểm nguồn và numeric guard |
+| Đầu ra | Markdown, JSON theo trang, plain text, Excel và ledger SQLite |
+| Từ khóa | Từ điển v1 gồm 86 cụm; literal, alias đã duyệt và hàng chờ riêng |
 
-### 2. Tối Ưu Hóa Docker Siêu Tốc (2-Layer Caching & Headless)
-- **Kiến trúc Cache 2 Tầng**:
-  - **Layer 1 (Dependencies)**: Copy các file manifest (`requirements*.txt`, `scripts/setup*`) và cài đặt môi trường. Các lần build sau được cache hoàn toàn, không phải tải lại các thư viện nặng.
-  - **Layer 2 (Application Code)**: Chỉ copy mã nguồn dự án và cài editable với cờ `--no-deps`. Thời gian rebuild khi sửa code giảm ngoạn mục từ **15–20 phút xuống chỉ còn ~2 giây**.
-- **Loại bỏ phụ thuộc giao diện (Headless)**: Sử dụng các gói OpenCV headless, triệt tiêu hoàn toàn lỗi crash thiếu thư viện đồ họa hệ thống (`libGL.so.1`).
-- **Cờ bypass kiểm tra build-time**: Bổ sung cờ `--no-device-check` và `--no-cuda-check` giúp build image thành công trên bất kỳ môi trường Docker CI/CD nào mà không yêu cầu có sẵn GPU lúc đóng gói.
+Model/revision/hash được ghim tại [`models/v62/runtime-models.json`](models/v62/runtime-models.json). Bảng hình học có engine `deterministic_geometry`, confidence chưa hiệu chuẩn là `null` và vẫn cần review. Cấu trúc không đủ bằng chứng giữ fallback/review theo hợp đồng; không suy tọa độ token từ độ dài chữ hoặc tự sửa số tài chính.
 
-### 3. Cải Tiến Bridge Cấu Trúc Bảng Docling (Table Structure Bridge)
-- **Khắc phục lỗi mất tiêu đề cột**: Nhận diện nguyên nhân gốc rễ của việc mất header bảng phân trang (như trang 37 AGR và 110 ASM) do bridge cũ chỉ đọc các khối nhìn thấy (`visible_blocks`), bỏ sót các mảnh chữ OCR đóng băng.
-- **Cơ chế Bridge Ẩn (`visible-and-frozen-ocr-v1`)**: Bổ sung toàn bộ nguồn OCR ẩn vào lớp PDF trung gian mà không làm biến dạng ảnh raster 180 DPI gốc.
-- **Hiệu quả downstream vượt trội**:
-  - Khôi phục 100% các ô tiêu đề cột tài chính: `Mã số`, `Thuyết minh`, `VND`, các năm so sánh (`31/12/2022`, `31/12/2021`).
-  - Số lượng mảnh chữ OCR khớp chính xác vào ô bảng tăng từ **166 lên 218 mảnh** (+52 mapping trên AGR), tỷ lệ chữ bị đẩy vào diện cần review giảm mạnh từ **53 xuống còn 1**.
+## Cài đặt
 
-### 4. Bảo Toàn Tuyệt Đối Số Liệu Tài Chính (Financial Numeric Guard)
-- **Quy tắc bất biến**: Tuyệt đối không cho phép AI/LLM tự ý sửa đổi hoặc đoán mò các con số tài chính (`numeric_guard.py`).
-- **Bảo toàn bằng chứng**: Mọi chữ số thô (`text_raw`), bounding box, mã định danh nguồn (`source_id`) và góc xoay đều được khóa nguyên vẹn.
-- **Xử lý token ngắn khó phân biệt (DC-01: O2O vs 020)**: Các trường hợp chữ số có nguy cơ nhầm lẫn do font in mờ được retry ở độ phân giải 400 DPI và đánh dấu yêu cầu người duyệt (`IMAGE_PROPOSAL_REQUIRES_REVIEW`), không tự ý sửa số liệu trong sổ sách.
+Python **3.11** cho supervisor và hai worker. Driver NVIDIA phải tương thích với các thư viện CUDA trong lock. Preflight kiểm môi trường thực trước OCR; smoke tổng hợp đã chạy trên RTX 2050 4 GiB, không phải cam kết mọi workload đều vừa VRAM đó.
 
-### 5. Hạ Tầng Kaggle & Đóng Gói Nguồn Độc Lập
-- **Tự động đóng gói sạch (`scripts/build_kaggle_source.py`)**: Đóng gói mã nguồn sạch (loại bỏ Git history, file tạm `output/`, `scratch/` và model weights) thành `scratch/kaggle_source.zip` gọn nhẹ.
-- **Notebook Kaggle Chuẩn Hóa (`kaggle/ocr_pdf_kaggle.ipynb`)**:
-  - Hỗ trợ chạy trực tiếp từ `SOURCE_ARCHIVE` đính kèm qua Kaggle Input hoặc clone tự động từ GitHub.
-  - Tích hợp cờ cấu hình `GLOBAL_ALIASES = True`, tự động áp dụng luật alias và xuất gói kết quả `results.zip`.
-  - Hỗ trợ phục hồi và chạy tiếp trên dữ liệu lớn (`PREVIOUS_RESULTS_DIR`) cho các batch từ 100 đến 1.000 PDF.
+| Môi trường | Vai trò |
+| --- | --- |
+| `.venv` | Supervisor, CLI, keyword, Excel/SQLite trên CPU |
+| `.venv-v62/text` | OCR và layout pha A |
+| `.venv-v62/docling` | Docling pha B |
 
----
-
-## 🛠️ 1. Yêu Cầu Hệ Thống & Cài Đặt
-
-- **Hệ điều hành**: Windows 10/11 hoặc Linux (Ubuntu 22.04+ khuyến nghị).
-- **Python**: Phiên bản **3.11** cho môi trường supervisor và các worker GPU.
-- **Phần cứng**: NVIDIA GPU (khuyến nghị tối thiểu 8GB VRAM) có cài đặt NVIDIA Driver tương thích CUDA 12.x.
-- **Kiến trúc môi trường cô lập**: Nhằm tránh xung đột phụ thuộc giữa các thư viện AI nặng, dự án tách làm 3 môi trường ảo:
-  - `.venv`: Supervisor điều phối, CLI, SQLite, đếm từ khóa, xuất Excel (CPU).
-  - `.venv-v62/text`: Worker OCR Pha A (ONNX Runtime CUDA, VietOCR, Heron Layout).
-  - `.venv-v62/docling`: Worker cấu trúc Pha B (Docling TableFormer, CodeFormula CUDA).
-
-### Cài đặt trên Windows (PowerShell):
+### Windows PowerShell
 
 ```powershell
-# 1. Tạo môi trường supervisor
+git clone https://github.com/VuTuanAn1403/OCR_pdf.git
+cd OCR_pdf
 py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -e ".[app]" uv
-
-# 2. Cài đặt các worker GPU
 .\.venv\Scripts\python.exe scripts/setup_v62.py --python 3.11 --env-root .venv-v62
 ```
 
-### Cài đặt trên Linux / Docker:
+Worker dùng lock riêng trong [`requirements/v62/`](requirements/v62). Không cài Docling vào supervisor hoặc trộn hai môi trường worker. Khi tiếp quản môi trường đã hoạt động, kiểm trước khi cài lại.
+
+### Linux
 
 ```bash
-# Sử dụng Docker (khuyến nghị cho môi trường máy chủ)
-docker build -t ocr-pdf:v7.0 -f docker/Dockerfile .
-docker run --gpus all -it --rm -v $(pwd)/inputs:/app/inputs -v $(pwd)/output:/app/output ocr-pdf:v7.0
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -e ".[app]" uv
+.venv/bin/python scripts/setup_v62.py --python 3.11 --env-root .venv-v62
 ```
 
----
+Các lệnh vận hành bên dưới dùng đường dẫn Windows; trên Linux thay `.venv/Scripts/python.exe` bằng `.venv/bin/python`. [Dockerfile](docker/Dockerfile) có trong repository; phiên kiểm chứng ngày 20/11/2026 không build hoặc nghiệm thu container.
 
-## 📦 2. Chuẩn Bị Trọng Số Model
-
-Cấu hình model và revision chuẩn được khai báo tại [`models/v62/runtime-models.json`](models/v62/runtime-models.json).
+### Chuẩn bị model
 
 ```powershell
-# Tải và chuẩn bị trọng số VietOCR
 .\.venv\Scripts\python.exe scripts/setup_vietocr_model.py
-
-# Tải detector ONNX và các snapshot Docling TableFormer
-.\.venv-v62\docling\Scripts\python.exe scratch/download_gpu_models.py
 ```
 
----
-
-## 🚀 3. Hướng Dẫn Vận Hành CLI
-
-### Kiểm tra tính sẵn sàng (Preflight):
-```powershell
-.\.venv\Scripts\python.exe scripts/preflight_v62.py --device cuda --env-root .venv-v62 --output scratch/preflight.json
-```
-
-### Xử lý một file PDF duy nhất:
-```powershell
-.\.venv\Scripts\python.exe run_ocr.py inputs/bao_cao.pdf --output output/unified_one
-```
-
-### Xử lý hàng loạt (Batch processing):
-Đặt tất cả các file PDF cần chạy vào thư mục `inputs/`:
-```powershell
-.\.venv\Scripts\python.exe run_batch.py --input inputs --output output/unified_batch
-```
-
-### Tiếp tục batch bị gián đoạn (Resume) hoặc thử lại file lỗi:
-```powershell
-# Chạy tiếp các file chưa hoàn tất
-.\.venv\Scripts\python.exe run_batch.py --input inputs --output output/unified_batch --resume
-
-# Thử lại các file có trạng thái FAILED
-.\.venv\Scripts\python.exe run_batch.py --input inputs --output output/unified_batch --resume --retry-failed
-```
-
----
-
-## 📊 4. Phân Tích Từ Khóa & Cập Nhật Rules Không Cần OCR Lại
-
-Một trong những ưu điểm lớn nhất của kiến trúc V7.0 là tính năng **Tách rời OCR và Phân tích (Decoupled Analysis)**. Khi bạn muốn đổi bộ từ khóa, cập nhật `config/alias_rules.json`, hoặc đổi quy tắc đếm: **hoàn toàn KHÔNG cần chạy lại OCR tốn GPU**.
+Script chuẩn bị VietOCR, gồm biến thể transformer của v8. Các ONNX và snapshot Docling phải khớp đường dẫn/hash/revision trong registry. Cell chuẩn bị model của [notebook Kaggle](kaggle/ocr_pdf_kaggle.ipynb) có luồng tải các nguồn đã ghim và kiểm hash. Giữ file/cache đã khớp; không tạo lại registry từ model khác để bỏ qua kiểm tra.
 
 ```powershell
-# Phân tích lại từ khóa trên kết quả đã có bằng CPU (chỉ mất vài giây):
-.\.venv\Scripts\python.exe run_batch.py --analysis-from output/unified_batch --output output/analysis_moi --alias-rules config/alias_rules.json
+.\.venv\Scripts\python.exe scripts/preflight_v62.py --device cuda --env-root .venv-v62 --output scratch/preflight_v8_001.json
 ```
 
-File Excel ma trận tổng hợp `MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx` và các hàng đợi nghi vấn `new_suspicions_queue.json` sẽ được sinh mới hoàn toàn tại thư mục đầu ra mới.
+## Chạy OCR
 
----
+Mỗi identity mới dùng thư mục output mới:
 
-## ☁️ 5. Chạy Thử Nghiệm Trên Kaggle
+```powershell
+# Một PDF
+.\.venv\Scripts\python.exe run_ocr.py inputs/bao_cao.pdf --output output/one_v8_001
 
-Notebook duy nhất và chính thức: [`kaggle/ocr_pdf_kaggle.ipynb`](kaggle/ocr_pdf_kaggle.ipynb).
+# Một batch
+.\.venv\Scripts\python.exe run_batch.py --input inputs --output output/batch_v8_001
 
-### Quy trình chạy:
-1. Đóng gói mã nguồn hiện tại từ máy cục bộ:
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/build_kaggle_source.py --output scratch/kaggle_source.zip
-   ```
-2. Tạo một Notebook mới trên Kaggle, bật **GPU T4 x2** hoặc **GPU P100** và bật **Internet: On**.
-3. Thêm dataset chứa các file PDF cần xử lý vào `/kaggle/input/...`.
-4. (Tùy chọn) Thêm file `kaggle_source.zip` làm Input Dataset và điền đường dẫn vào biến `SOURCE_ARCHIVE`.
-5. Đặt cấu hình trong Cell 1 & 2:
-   - `GLOBAL_ALIASES = True`: Bật đếm từ khóa theo luật toàn cục.
-   - `ASSETS = "none"`: Tiết kiệm ổ đĩa (hoặc `"jpeg"` nếu cần lưu ảnh cắt).
-   - `RUN_FULL_BATCH = True`: Thực thi toàn bộ batch.
-6. Chọn **Run All**. Kết quả trích xuất, ma trận Excel và file nén `results.zip` sẽ được tạo tự động tại thư mục `/kaggle/working/`.
+# Tiếp tục cùng input/config/code/model/runtime
+.\.venv\Scripts\python.exe run_batch.py --input inputs --output output/batch_v8_001 --resume
 
----
+# Thử lại tài liệu lỗi trong cùng batch
+.\.venv\Scripts\python.exe run_batch.py --input inputs --output output/batch_v8_001 --resume --retry-failed
+```
 
-## 📂 6. Cấu Trúc Đầu Ra Chuẩn
+Điểm vào chuẩn là `ocr_pipeline.cli.main`; các launcher/alias cũ chuyển tiếp về đây. Bản `src/ocr` là tương thích legacy. Đổi `.py` trong `src/` vẫn đổi OCR identity, kể cả chỉ tách module; không sửa receipt/hash của output cũ để ép resume.
 
-Mỗi đợt chạy batch sinh ra cấu trúc thư mục minh bạch và có khả năng truy vết nguồn gốc (provenance):
+## Đếm từ khóa v1 và tầng 2
+
+| Luồng | Quy tắc |
+| --- | --- |
+| Literal v1 | Unicode NFC + `casefold`; không phân biệt hoa/thường; đếm chuỗi con không chồng lấn trong từng keyword |
+| Tier 2 | Cộng các alias được rule hoặc quyết định occurrence chấp nhận; giữ riêng literal |
+| Pending | Biến thể chưa đủ điều kiện; giữ ngữ cảnh/vị trí đã xác định và trạng thái chờ |
+
+`CHUYỂN ĐỔI SỐ`, `Chuyển đổi số` và `chuyển đổi số` khớp cùng keyword. Literal vẫn phân biệt dấu và khoảng trắng; không tự gộp khoảng trắng hoặc xuống dòng, không fuzzy, mỗi keyword độc lập và có thể khớp trong cụm dài hơn.
+
+Rules dùng chung nằm tại [`config/alias_rules.json`](config/alias_rules.json). Đợt duyệt 20/11 thêm 10 biến thể từ 22 occurrence đã được người dùng chấp nhận; [nguồn duyệt](config/alias_rules_review_20261120.md) giữ phạm vi và hash. Hai trường hợp `tài chính` nối đoạn với `Số` giữ quyết định loại theo occurrence, không trở thành rule multiline.
+
+Thay từ điển/rules hoặc bổ sung quyết định duyệt dùng analysis CPU trên extraction đã xác minh, xuất sang thư mục mới:
+
+```powershell
+.\.venv\Scripts\python.exe run_batch.py --analysis-from output/batch_v8_001 --output output/analysis_v8_001 --alias-rules config/alias_rules.json
+
+# Bundle chuẩn alias-decisions-bundle-v2, ràng buộc hash và offset của nguồn
+.\.venv\Scripts\python.exe run_batch.py --analysis-from output/batch_v8_001 --output output/analysis_v8_reviewed_001 --alias-rules config/alias_rules.json --alias-decisions review/alias-decisions.json
+```
+
+Sửa nhãn trực tiếp trong `new_suspicions_queue.json` chưa tự cập nhật số đếm hoặc Excel. Quyết định cần được nhập bằng bundle hợp lệ và phân tích lại; giữ nguyên snapshot nguồn. Tổng sau duyệt còn trống ở keyword chưa xử lý hết pending; tài liệu lỗi/chưa đánh giá không bị thay bằng số 0.
+
+## Cấu trúc mã nguồn và bảo trì bảng
+
+| Module | Trách nhiệm |
+| --- | --- |
+| `ocr_pipeline`, `ocr_workers`, `ocr_runtime` | Điều phối, pha GPU, identity/process/cache |
+| `ocr_contracts`, `ocr_artifacts` | Schema, hình học chung, hash/receipt và ghi nguyên tử |
+| `ocr_pdf_io`, `ocr_recognition`, `ocr_layout` | PDF/render, đọc chữ và layout |
+| `ocr_structure`, `ocr_document`, `ocr_text` | Bridge/cấu trúc, ghép/export tài liệu, hậu xử lý |
+| `ocr_keywords`, `ocr_reporting` | Đếm từ khóa và Excel/readback |
+
+Hai file đầu vào giữ đường gọi tương thích; thuật toán được chia theo trách nhiệm:
 
 ```text
-output/unified_batch/
-  ├── batch_state.sqlite                 # Sổ cái SQLite theo dõi trạng thái từng PDF
-  ├── batch_input_manifest.json          # Danh sách file đầu vào kèm mã băm SHA-256
-  ├── batch_config.json                  # Cấu hình runtime và tham số đã sử dụng
-  ├── batch_report.json                  # Báo cáo tổng hợp số lượng trang, lỗi, cảnh báo
-  ├── MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx # Ma trận Excel tổng hợp 6 sheet đa tầng
-  ├── new_suspicions_queue.json          # Hàng đợi các biến thể từ khóa mới chờ duyệt
-  ├── logs/                              # Log chi tiết của từng worker và tiến trình
-  └── <ten_file_pdf>/
-        ├── result.md                    # Nội dung trích xuất Markdown chuẩn (nguồn đếm)
-        ├── result.txt                   # Nội dung Plain Text thuần túy (dễ tìm kiếm)
-        ├── document.md                  # Markdown kèm cấu trúc cây đề mục
-        ├── extraction.json              # Dữ liệu JSON gốc kèm bounding box và source ID
-        ├── structure.json               # Cấu trúc bảng biểu và phân vùng tài liệu
-        ├── ocr_receipt.json             # Biên lai xác thực phần cứng, thời gian, mô hình
-        ├── keyword_counts.json          # Kết quả đếm từ khóa chi tiết của tài liệu
-        ├── count_keywords.xlsx          # Bảng Excel đếm và trích dẫn theo trang của riêng file
-        └── COMPLETED.json               # Khóa hoàn tất tài liệu (chống ghi đè)
+src/ocr_structure/
+  financial_table_reconstructor.py     # API import tương thích
+  financial_tables/
+    reconstructor.py                  # Điều phối tài chính
+    patterns.py                       # Nhãn và token tài chính
+    segmentation.py                   # Gom dòng, tách bảng
+    columns.py                        # Cụm số và biên cột
+    cells.py                          # Header/colspan và ô dữ liệu
+    provenance.py                     # Ánh xạ nguồn, numeric guard
+  document_layout_engine.py           # Điều phối layout bảng
+  table_layout/
+    patterns.py, row_rules.py          # Vocabulary, header, dòng
+    ocr.py, ocr_cells.py               # Detector OCR chung và cell projection
+    geometry.py                       # Biên cột, bao vùng
+    vector.py, image_regions.py        # Chiến lược vector/vùng ảnh
 ```
 
----
+Xem [hướng dẫn sửa bảng tài chính](src/ocr_structure/financial_tables/README.md), [hướng dẫn chiến lược layout](src/ocr_structure/table_layout/README.md) và [hợp đồng hình học](src/ocr_structure/FINANCIAL_GEOMETRY.md). Helper import một chiều; thay cột/ô/nguồn tại module phụ trách rồi chạy test sát phạm vi.
 
-## 🧪 7. Kiểm Thử & Đảm Bảo Chất Lượng
+## Output
 
-Dự án duy trì bộ kiểm thử hồi quy nghiêm ngặt với hơn 2.200 unit tests, contract tests và scientific evaluations:
+```text
+output/batch_v8_001/
+  batch_config.json, batch_input_manifest.json, batch_report.json
+  batch_state.sqlite
+  keyword_dictionary.snapshot.json
+  MA_TRAN_DEM_TU_KHOA_<N>_FILES.xlsx
+  new_suspicions_queue.json
+  logs/
+  <document_id>/
+    result.md, result.txt, result.json, pages/
+    document.json, document.md, extraction.json, structure.json
+    manifest.json, quality.json, validation.json
+    keyword_counts.json, keyword_two_tier.json, count_keywords.xlsx
+    ocr_receipt.json, keyword_receipt.json, COMPLETED.json
+```
+
+Các sheet chính: `Ma trận từ khóa`, `Dem_Tier2`, `Cho_duyet`, `Tong_sau_duyet`, `Trich_dan_chi_tiet`, `Trich_dan_Tier2`; kèm sheet trạng thái/thông tin/lỗi và các cột review-only `Cho_duyet_dong_bi_loai`, `Ung_vien_chu_so`. Cột review-only không tự cộng vào tổng sau duyệt. `COMPLETED.json` và receipt nhận dạng/hash các artifact, không phải chứng nhận accuracy.
+
+## Kaggle
+
+Dùng [`kaggle/ocr_pdf_kaggle.ipynb`](kaggle/ocr_pdf_kaggle.ipynb), bật accelerator GPU và Internet, gắn dataset PDF rồi chạy các cell theo thứ tự. Đặt `REPO_URL` về repository này và `REPO_REF` về nhánh/commit cần kiểm. `GLOBAL_ALIASES=True` dùng rules của checkout, `ASSETS="none"` xuất gọn; `PREVIOUS_RESULTS_DIR` nhận gói kết quả cũ đã giải nén và giữ identity khi resume.
+
+Để chạy đúng checkout local trước khi phát hành:
 
 ```powershell
-# Chạy toàn bộ test unit, khoa học và tương thích ngược
-.\.venv\Scripts\python.exe scripts/run_pytest_scratch.py tests/unit tests/scientific tests/legacy_compat -q -ra
+.\.venv\Scripts\python.exe scripts/build_kaggle_source.py --output scratch/kaggle_source_v8_001.zip
 ```
 
-### Các nguyên tắc vận hành cốt lõi:
-- **Nguyên tắc dữ liệu bất biến**: Không can thiệp sửa đổi các file receipt, hash hoặc kết quả đã công bố trong lịch sử.
-- **Nguyên tắc không suy đoán số**: Nghiêm cấm mọi hành vi tự động đoán hoặc sửa chữ số trên Báo cáo Tài chính nếu không có sự xác nhận của con người.
-- **Giới hạn kiểm thử**: Số lượng test pass hay cờ SUCCEEDED chỉ chứng minh tính toàn vẹn của mã nguồn phần mềm, không thay thế cho việc đánh giá độ chính xác thực tế trên tập Ground Truth (GT) độc lập.
+Gắn ZIP qua Kaggle Input, điền `SOURCE_ARCHIVE` cùng `SOURCE_ARCHIVE_SHA256` do script in ra. Khi đổi rules hoặc mã, dùng lượt/output mới phù hợp; bản ZIP/checkout cũ không tự có cập nhật mới. Trong gói Kaggle, batch thường nằm dưới `documents/`, nên queue/ma trận nằm ở thư mục đó.
 
----
+## Kiểm chứng
 
-## 📜 Tài Liệu Tham Khảo Thêm
+```powershell
+# Cài dependency test khi cần
+.\.venv\Scripts\python.exe -m pip install -e ".[app,dev]" pytest
 
-- [Bản đồ cấu trúc dự án](docs/development/PROJECT_MAP.md)
+# Hồi quy unit, scientific và legacy compatibility
+.\.venv\Scripts\python.exe scripts/run_pytest_scratch.py tests/unit tests/scientific tests/legacy_compat -q --capture=fd
+
+# Registry và bản đồ kiến thức
+.\.venv\Scripts\python.exe scripts/check_knowledge_map.py --check
+
+# Chỉ khi cần kiểm thực thi GPU; dùng đường dẫn mới
+.\.venv\Scripts\python.exe scripts/smoke_unified.py --output output/smoke_v8_001
+.\.venv\Scripts\python.exe scripts/audit_batch_outputs.py --output output/smoke_v8_001 --report scratch/smoke_v8_001_audit.json --validate
+```
+
+Test pass, `SUCCEEDED`, confidence hoặc audit artifact không chứng minh độ chính xác trên tài liệu thật. Nghiệm thu cần GT độc lập, input/config/code/model/runtime được nhận dạng và protocol đo có thể kiểm lại. Giữ `NOT_EVALUATED` khi thiếu bằng chứng; cổng dấu 99,99% chưa được xác nhận đạt.
+
+## Tài liệu liên quan
+
+- [Kiến trúc và invariant](ARCHITECTURE.md)
+- [Bản đồ tra cứu mã nguồn](docs/development/PROJECT_MAP.md)
 - [Quy trình phát triển và kiểm chứng](docs/development/README.md)
-- [Hồ sơ bàn giao phiên gần nhất](docs/development/HANDOFF.md)
-- [QA Registry offline: import review, kiểm bằng chứng và revision](benchmark/qa/README.md)
-- [Hướng dẫn Commit & Push GitHub an toàn](docs/development/HUONG_DAN_COMMIT_VA_PUSH_GITHUB.md)
-- [Quy trình tự động hóa Alias Rules và kiểm thử Kaggle](cai%20tien%20v2/09_LUU_TRU_CAI_TIEN_V7.md#ct-14)
+- [Bàn giao gần nhất](docs/development/HANDOFF.md)
+- [Ground Truth protocol](docs/quality_assurance/GROUND_TRUTH_PROTOCOL.md)
+- [QA registry](benchmark/qa/README.md)

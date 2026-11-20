@@ -1,6 +1,6 @@
 # Bản đồ tra cứu OCR PDF
 
-Đối chiếu liên kết ngày 14/11/2026 tại HEAD `a8c01b1`. Chọn hàng theo việc cần làm rồi mở mã, caller và test tương ứng.
+Cập nhật tra cứu bảng 20/11/2026, HEAD `52579a2` cộng working tree. Chọn hàng theo việc cần làm rồi mở mã, caller và test tương ứng.
 
 ## Nguồn thông tin theo câu hỏi
 
@@ -30,7 +30,7 @@
 | PDF view, render, tọa độ | [ocr_pdf_io](../../src/ocr_pdf_io/README.md) | [PDF IO](../../tests/unit/pdf_io) |
 | Detector, crop, chữ, hướng dòng | [ocr_recognition](../../src/ocr_recognition/README.md) | [recognition](../../tests/unit/recognition), [routing](../../tests/unit/test_routing.py) |
 | Dấu và bảo toàn số | [ocr_text](../../src/ocr_text/README.md) | [text](../../tests/unit/text), [numeric guard](../../tests/unit/test_v6_numeric_guard.py) |
-| Layout vùng và Docling bridge | [ocr_layout](../../src/ocr_layout/README.md), [ocr_structure](../../src/ocr_structure/README.md) | [layout adapters](../../tests/unit/test_v6_layout_adapters.py), [structure](../../tests/unit/structure) |
+| Layout vùng, thuật toán bảng và Docling bridge | [ocr_layout](../../src/ocr_layout/README.md), [ocr_structure](../../src/ocr_structure/README.md) | [layout adapters](../../tests/unit/test_v6_layout_adapters.py), [structure](../../tests/unit/structure) |
 | Ghép bảng/trang, reading order, review, export | [ocr_document](../../src/ocr_document/README.md) | [document](../../tests/unit/document), [export baseline](../../tests/unit/test_migration_v63_export_baseline.py) |
 | L5 bảng qua trang | [Tiếp nhận A/B/C](../../benchmark/ground_truth_tools/TABLE_BOUNDARY_INTAKE_V7.md), [ghép thử](../../src/ocr_document/TABLE_STITCH_V7.md) | [Phiếu L5](../../tests/scientific/test_table_boundary_annotations.py), [chiếu bảng](../../tests/unit/document/test_table_stitch.py) |
 | Keyword, Excel, ma trận | [ocr_keywords](../../src/ocr_keywords/README.md), [ocr_reporting](../../src/ocr_reporting/README.md), [phiếu occurrence](../../scripts/review_keyword_occurrences.py) | [keywords](../../tests/unit/keywords), [reporting](../../tests/unit/reporting), [phiếu](../../tests/unit/test_review_keyword_occurrences.py) |

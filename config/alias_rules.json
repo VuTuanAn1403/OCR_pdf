@@ -1,13 +1,18 @@
 {
   "schema_version": "alias-rules-v1",
-  "updated_at_utc": "2026-11-06T07:00:00Z",
-  "curator": "User-provided document 14, 2026-11-06; seed rules, not independent ground truth",
+  "updated_at_utc": "2026-11-20T15:08:28Z",
+  "curator": "User-provided document 14 seed; user-authorized promotion of 10 reviewed variants on 2026-11-20 (alias_rules_review_20261120.md); not independent ground truth",
   "normalization_policy": "NFC_CASEFOLD",
   "approved_global_aliases": {
-    "Chuyển đổi số": ["chuyển đối số"],
+    "Chuyển đổi số": ["chuyển đối số", "chuyển đồi số"],
     "thương mại điện tử": ["thương mai điện tử"],
-    "Trí tuệ nhân tạo": ["trí tuệ nhận tạo"],
+    "Trí tuệ nhân tạo": ["trí tuệ nhận tạo", "trí tuê nhân tao", "trí tuê nhân tạo", "trí tuệ nhân tao"],
     "An ninh mạng": ["an ninh mang"],
+    "Tự động hóa": ["tư động hóa", "tự động hoá"],
+    "Số hóa": ["số hoá"],
+    "Internet vạn vật": ["internet van vật"],
+    "điện toán đám mây": ["điện toán đám máy"],
+    "khai thác dữ liệu": ["khai thác dữ liêu"],
     "Đổi mới": [
       {"alias": "đồi mới", "required_after": "tài sản"},
       {"alias": "đồi mới", "required_before": "sáng tạo"},
