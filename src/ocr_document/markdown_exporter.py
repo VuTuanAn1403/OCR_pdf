@@ -118,8 +118,19 @@ class MarkdownExporter:
         # loses labels and surrounding content.
 
         # Step 2a: Merge vertically stacked lines of the same box (strictly for flowchart / diagram pages)
-        is_diagram_page = (len(page.tables) == 0 and len(body_blocks) < 25
-                           and not any(b.block_type == "formula" for b in body_blocks))
+        is_diagram_page = (
+            len(page.tables) == 0
+            and len(body_blocks) < 25
+            and not any(b.block_type == "formula" for b in body_blocks)
+            and not any(len(b.text.strip()) > 150 for b in body_blocks)
+            and (
+                bool(getattr(page, "diagrams", None))
+                or str(getattr(page, "page_type", "")).upper() in ("DIAGRAM_HEAVY", "PAGETYPE.DIAGRAM_HEAVY")
+                or any("sơ đồ tổ chức" in b.text.lower() for b in body_blocks)
+                or any("người phụ trách" in b.text.lower() for b in body_blocks)
+                or (body_blocks and sum(len(b.text.strip()) for b in body_blocks) / len(body_blocks) < 40)
+            )
+        )
         if is_diagram_page:
             sorted_body = sorted(body_blocks, key=lambda b: (b.bbox[1] if b.bbox else 0, b.bbox[0] if b.bbox else 0))
             vertically_merged: List[TextBlock] = []
