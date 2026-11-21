@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0",
   "pipeline_version": "8.0.0",
-  "verified_head": "16926e459481d1eae491028f65f988fd85569d23",
+  "verified_head": "228bcb88edd722725399b4f8b73750c0ccef0d40",
   "last_verified": "2026-11-21",
-  "verified_scope": "21/11 mã 16926e4: retry lề trắng có đồng thuận cho crop Transformer yếu, giữ raw/nguồn/số và dòng tốt; extraction c308a32d378a5b28. 2792 passed/1 skipped; GPU Windows đủ 2 trang VIB: 7/7 dòng chẩn đoán khớp token, 57/57 control giữ raw, audit không lỗi nhưng NEEDS_REVIEW. benchmark/evidence/vib_context_retry_20261121.json. Chưa nghiệm thu accuracy/GT độc lập hoặc chạy lại Kaggle; smoke/khóa cũ là lịch sử. V8 giữ 38 DONE/11 pha DONE.",
+  "verified_scope": "21/11 mã 228bcb8: OCR/Docling theo vùng xoay/spread, retry số và dòng dài, giữ chú thích xoay 90°/ô bảng và đối soát float32; extraction 3c2fb9a542f281ab. 2842 passed/1 skipped; GPU Windows đủ 3 PDF/8 trang (VIB 7/7, 57/57; VNG A/B audit 0 lỗi, NEEDS_REVIEW). benchmark/evidence/vng_core_fixes_20261121.json. Chưa nghiệm thu accuracy/GT độc lập hoặc Kaggle; V8 giữ 38 DONE/11 pha DONE.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",

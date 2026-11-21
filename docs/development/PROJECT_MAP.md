@@ -1,6 +1,6 @@
 # Bản đồ tra cứu OCR PDF
 
-Cập nhật 21/11/2026, mốc mã xuất bản `16926e4`. Chọn hàng theo việc cần làm rồi mở mã, caller và test tương ứng.
+Cập nhật 21/11/2026, mốc mã xuất bản `228bcb8`. Chọn hàng theo việc cần làm rồi mở mã, caller và test tương ứng.
 
 ## Nguồn thông tin theo câu hỏi
 
