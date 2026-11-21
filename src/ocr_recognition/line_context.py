@@ -42,7 +42,7 @@ def _no_new_numbers(original, candidate):
                for value in protected_numeric_fragments(candidate))
 
 
-def retry_line_context(images, texts, probabilities, recognize):
+def retry_line_context(images, texts, probabilities, recognize, *, skip_indices=()):
     """Read weak lines with distinct margins; retain baseline unless views agree.
 
     This selects a complete model reading, never edits or truncates a string.
@@ -51,6 +51,8 @@ def retry_line_context(images, texts, probabilities, recognize):
     result_images, result_texts, result_probs = list(images), list(texts), list(probabilities)
     pending, proposals, contexts = [], [], []
     for index, (image, text, prob) in enumerate(zip(images, texts, probabilities)):
+        if index in skip_indices:
+            continue
         if not text.strip() or not math.isfinite(float(prob)) or not 0.6 <= float(prob) < 0.9:
             continue
         seen = set()

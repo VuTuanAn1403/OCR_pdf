@@ -141,6 +141,20 @@ def unplaced_visible_block_indices(placements, visible_count):
             and 0 <= record["block_index"] < visible_count}
 
 
+def _bridge_insertion_key(indexed_entry):
+    """Order rotated lines in their upright reading direction for PDF text extraction."""
+    pos, (block, _, _) = indexed_entry
+    if is_oriented_line_candidate(block.recognition_provenance) and len(block.bbox) == 4:
+        angle = block.recognition_provenance.get("rotation_clockwise_degrees")
+        if angle == 90:
+            return (1, round(block.bbox[0], 1), -block.bbox[3], pos)
+        if angle == 270:
+            return (2, -round(block.bbox[2], 1), block.bbox[1], pos)
+        if angle == 180:
+            return (3, -round(block.bbox[3], 1), -block.bbox[2], pos)
+    return (0, float(pos), 0.0, pos)
+
+
 @contextmanager
 def ocr_bridge(source_page, extracted_page, dpi, *, font_path=None, orientation_placements=None, source_coverage=None):
     font_path, font = load_bridge_font(font_path)
@@ -153,7 +167,7 @@ def ocr_bridge(source_page, extracted_page, dpi, *, font_path=None, orientation_
         target = bridge.new_page(width=extracted_page.width, height=extracted_page.height)
         target.insert_image(target.rect, pixmap=source_page.get_pixmap(dpi=dpi, alpha=False))
         target.insert_font(fontname="OCRBridge", fontfile=str(font_path))
-        for block, index, evidence_index in sources:
+        for _, (block, index, evidence_index) in sorted(enumerate(sources), key=_bridge_insertion_key):
             if block.source == "native":
                 raise ValueError("OCR bridge refuses native text")
             if is_oriented_line_candidate(block.recognition_provenance):
@@ -173,12 +187,12 @@ def ocr_bridge(source_page, extracted_page, dpi, *, font_path=None, orientation_
             if len(block.bbox) != 4 or not block.text.strip():
                 continue
             x0, y0, x1, y1 = block.bbox
-            for index, line in enumerate(block.text.splitlines()):
+            for line_index, line in enumerate(block.text.splitlines()):
                 if not line.strip():
                     continue
                 size = min(max(1., (y1-y0)/max(1,len(block.text.splitlines()))*.70),
                            max(1., (x1-x0)/max(.1,font.text_length(line, fontsize=1))))
-                target.insert_text((x0, y0+size*(index+1)), line, fontname="OCRBridge", fontsize=size, render_mode=3)
+                target.insert_text((x0, y0+size*(line_index+1)), line, fontname="OCRBridge", fontsize=size, render_mode=3)
         if orientation_placements:
             _record_placed_geometry(target, [block for block, _, _ in sources], orientation_placements)
         yield bridge

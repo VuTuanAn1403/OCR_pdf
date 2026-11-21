@@ -84,7 +84,9 @@ def test_horizontal_retry_rotates_context_once_and_preserves_original_bbox():
     assert result["text"] == result["text_raw"] == "(120)"
     assert result["bbox"] == [10, 10, 110, 30] and result["needs_review"]
     proof = result["recognition_provenance"]
-    assert proof["rotation_clockwise_degrees"] == 180
+    # Both views read the same valid number. Confidence alone cannot establish
+    # which orientation of a numeric token is correct.
+    assert proof["rotation_clockwise_degrees"] == 0
     assert proof["context_retry"]["readings"][0]["baseline"]["text_raw"] == "(120) thừa thừa"
 
 

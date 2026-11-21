@@ -57,9 +57,12 @@ def segment_table_regions(
         is_footnote = line_text.startswith("(*)") or "tam dung hoat dong" in norm_text
         is_prose = (len(line) == 1 and len(line_text) > 50 and not num_tokens
                     and not ENTITY_BULLET_RE.match(line_text))
+        is_footer = (min(b.bbox[1] for b in line) > .95 * page_height
+                     and len(num_tokens) < 2
+                     and re.search(r"\b[\w.-]+\.(?:vn|com|org|net)\b", line_text, re.I))
 
         # Break table on section title, footnote note, or explanatory prose
-        if in_table and (is_sec_title or is_footnote or is_prose):
+        if in_table and (is_sec_title or is_footnote or is_prose or is_footer):
             segments.append(current_segment)
             current_segment = []
             in_table = False
@@ -98,14 +101,12 @@ def segment_table_regions(
                     if (
                         re.search(r"\b\d{1,2}/\d{1,2}/\d{4}\b", prev_text)
                         or HEADER_KEYWORDS_NORM.search(prev_norm)
-                    ) and not (prev_text.startswith("(*)") or is_prose or "nhu sau" in prev_norm):
+                    ) and not (prev_text.startswith("(*)") or is_prose or "nhu sau" in prev_norm
+                               or any(FINANCIAL_NUM_RE.match(b.text.strip())
+                                      and re.search(r"\d[.,]\d", b.text) for b in prev_l)):
                         current_segment.extend(prev_l)
             current_segment.extend(line)
 
-            if is_total:
-                segments.append(current_segment)
-                current_segment = []
-                in_table = False
         elif in_table:
             # Text line inside table (e.g. wrapped description or multi-line entity name)
             current_segment.extend(line)

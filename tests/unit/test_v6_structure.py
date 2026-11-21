@@ -357,6 +357,23 @@ def test_document_index_labels_recognize_toc_with_separate_page_number_boxes():
     assert structure.sections == [] and structure.flow == []
 
 
+def test_rotated_vertical_footnotes_do_not_match_bottom_page_number_as_toc():
+    builder = Builder()
+    for i in range(8):
+        text = f"({i + 1}) Vào ngày 21 tháng 10 năm 2024, Công ty hoàn tất giao dịch 700.000 cổ phần dòng {i + 1}."
+        builder.add(text, source="primary_ocr")
+        builder.pages[1][-1].bbox = [360.0 + i * 12.0, 70.0, 369.0 + i * 12.0, 793.0]
+    builder.add("243", source="primary_ocr")
+    builder.pages[1][-1].bbox = [1135.0, 812.0, 1155.0, 824.0]
+    doc = builder.doc()
+    doc.pages[0].width = 1191.0
+    structure = structure_of(doc)
+    assert structure.toc is None
+    assert "toc_entry" not in structure.dropped.values()
+    md = render_document_md(doc, structure, "none")
+    assert "700.000" in md and md.count("700.000") == 8
+
+
 def test_line_overlapping_table_center_is_not_discarded_when_most_text_is_outside():
     doc = Builder().add("Thuyết minh chung cho bảng và hoạt động của công ty").doc(tables={1: [_table()]})
     doc.pages[0].blocks[0].bbox = [0, 310, 500, 325]

@@ -10,11 +10,12 @@ calibrated confidence. A Docling failure keeps the existing extraction
 import logging
 import re
 
-from ocr_contracts.geometry import block_is_covered, is_oriented_line_candidate
+from ocr_contracts.geometry import block_is_covered, is_non_horizontal_line_candidate
 from ocr_contracts.page_type import PageType
 from ocr_contracts.region import BoundingBox, ContentType, Region
 from ocr_contracts.text_block import TextBlock
 from ocr_structure.docling_client import DoclingStructureError
+from ocr_structure.table_selection import retain_heuristic_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
     meta["docling_structure"] = {**result["metadata"], "cache_fingerprint": fingerprint}
     model_tables = result["tables"] if options.get("tables", True) else []
     formulas = result["formulas"] if options.get("formulas", True) else []
-    vertical = {index for index, block in enumerate(blocks) if is_oriented_line_candidate(block.recognition_provenance)}
+    vertical = {index for index, block in enumerate(blocks) if is_non_horizontal_line_candidate(block.recognition_provenance)}
     unplaced = vertical if bridge_unplaced_indices is None else bridge_unplaced_indices
     # Populate empty cell text from high-accuracy native or VietOCR blocks
     for table in model_tables:
@@ -84,14 +85,14 @@ def enrich_structures(extractor, doc_page, page_num, page_type, blocks, tables, 
     # Preserve only a source-checked grid for the same region. A large model table
     # spanning unrelated material must not be discarded on a one-way overlap test.
     preserved = [table for table in geometric if any(
-        block_is_covered(model.bbox, [table], 0.8) and block_is_covered(table.bbox, [model], 0.8)
+        block_is_covered(model.bbox, [table], 0.98)
         for model in model_tables)]
     model_tables = [model for model in model_tables if not any(
-        block_is_covered(model.bbox, [table], 0.8) and block_is_covered(table.bbox, [model], 0.8)
+        block_is_covered(model.bbox, [table], 0.98)
         for table in preserved)]
     if preserved:
         meta["docling_structure"]["preserved_geometric_tables"] = [table.table_id for table in preserved]
-    tables = [table for table in tables if not block_is_covered(table.bbox, model_tables, 0.5)] + model_tables
+    tables = retain_heuristic_candidates(tables, model_tables, meta['docling_structure']) + model_tables
     # Freeze formula ownership at the point where the original text is
     # replaced. LaTeX need not equal the OCR transcription byte-for-byte.
     for index, block in enumerate(blocks):
@@ -131,7 +132,7 @@ def drop_blocks_inside_tables(blocks, tables, layout_engine):
     if tables:
         heuristic_tables = [t for t in tables if t.engine != "docling_tableformer"]
         model_tables = [t for t in tables if t.engine == "docling_tableformer"]
-        blocks = [b for b in blocks if is_oriented_line_candidate(b.recognition_provenance) or not (
+        blocks = [b for b in blocks if is_non_horizontal_line_candidate(b.recognition_provenance) or not (
             (heuristic_tables and layout_engine.is_block_inside_any_table(b.bbox, heuristic_tables))
             or block_is_covered(b.bbox, model_tables))]
     return blocks

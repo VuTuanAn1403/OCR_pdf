@@ -149,3 +149,20 @@ def test_vertical_line_requires_placement_and_one_cell_to_contain_the_whole_sour
     assert statuses(page) == [status]
     if status == "KEPT_FOR_REVIEW":
         assert page.blocks[0].text_raw == "Số (020)" and page.blocks[0].bbox == source["bbox"]
+
+
+def test_placed_line_float32_rounding_boundary_maps_without_relaxing_outside_cells():
+    from ocr_document.contract_schema import validate_extraction
+    from ocr_document.resolve_document_layout import _cell_contains_placed_line
+
+    # Straddles the 131.625 half-cent boundary by 3e-5pt (inverse rotation float32 drift).
+    placed = [131.62497, 362.5472, 139.63496, 407.6430]
+    cell = [131.62500, 362.5470, 139.63500, 407.64299]
+    assert _cell_contains_placed_line(placed, cell) is True
+    # Exported extraction.json rounds cell boxes to 0.01pt; contract_schema matches it.
+    exported_cell = [round(v, 2) for v in cell]
+    assert _cell_contains_placed_line(placed, exported_cell, eps=0.01) is True
+    # Genuine outside displacement must still abstain.
+    assert _cell_contains_placed_line([131.50, 362.55, 139.63, 407.64], cell) is False
+    assert _cell_contains_placed_line([131.50, 362.55, 139.63, 407.64], exported_cell, eps=0.01) is False
+    assert callable(validate_extraction)

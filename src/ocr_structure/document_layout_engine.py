@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import re
 import unicodedata
 import pymupdf
-from ocr_contracts.geometry import is_oriented_line_candidate
+from ocr_contracts.geometry import is_non_horizontal_line_candidate
 from ocr_contracts.table import TableStructure, TableCell
 from ocr_contracts.text_block import TextBlock
 from ocr_contracts.region import Region, ContentType
@@ -44,14 +44,15 @@ class DocumentLayoutEngine:
         tables: List[TableStructure] = []
         document_index_page = has_document_index_title(blocks)
         # The heuristic derives horizontal rows and has no vertical-cell alignment.
-        blocks = [block for block in blocks if not is_oriented_line_candidate(block.recognition_provenance)]
+        blocks = [block for block in blocks if not is_non_horizontal_line_candidate(block.recognition_provenance)]
 
         # 1. Vector tables
         if allow_vector_tables:
             tables.extend(self._extract_vector_tables(page, page_num))
 
         # Preserve whole observed OCR blocks in borderless financial grids before
-        # image-region and generic heuristics. Wide two-up pages keep their existing routing.
+        # image-region and generic heuristics. Wide spreads first separate
+        # independent panels before reconstructing each financial grid below.
         from ocr_structure.financial_table_reconstructor import FinancialTableReconstructor
         try:
             page_width = float(page.rect.width)
@@ -148,6 +149,12 @@ class DocumentLayoutEngine:
             subpage_block_groups = [blocks]
 
         for s_blocks in subpage_block_groups:
+            if page_width > 900 and not document_index_page:
+                candidates = [b for b in s_blocks if not self.is_block_inside_any_table(b.bbox, tables)]
+                for table in FinancialTableReconstructor().reconstruct_tables(
+                        candidates, page_width, page_height, page_num):
+                    table.table_id = f"page_{page_num}_financial_{len(tables)+1}"
+                    tables.append(table)
             for _ in range(5):  # Detect up to 5 tables per subpage/page
                 candidate_blocks = [b for b in s_blocks if not self.is_block_inside_any_table(b.bbox, tables)]
                 if len(candidate_blocks) < 5:

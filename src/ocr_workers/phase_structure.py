@@ -32,6 +32,7 @@ def run_structure(request):
     from ocr_contracts.page import ExtractedPage
     from ocr_structure.docling_client import DoclingStructureExtractor
     from ocr_structure.enrichment import enrich_structures
+    from ocr_structure.region_views import RegionStructureExtractor
     text_root, root = stage_dir(request, "text"), stage_dir(request, "structure")
     checkpoint = read(receipt_path(request, "text"))
     extractor = DoclingStructureExtractor(request["config"]["docling"])
@@ -58,8 +59,9 @@ def run_structure(request):
                             page.quality.review_required_count += 1
                         if "bridge_orientation_unresolved" not in block.review_reason_codes:
                             block.review_reason_codes.append("bridge_orientation_unresolved")
+                    page_extractor = RegionStructureExtractor(extractor, page.metadata.get("regional_ocr", {}).get("views", []))
                     page.blocks, page.tables, page.formulas = enrich_structures(
-                        extractor, bridge[0], page.page_num, page.page_type, page.blocks,
+                        page_extractor, bridge[0], page.page_num, page.page_type, page.blocks,
                         page.tables, page.regions, page.metadata, bridge_unplaced_indices=unplaced)
                 page.metadata["ocr_structure_bridge"] = {"policy":"raster-plus-gpu-text-v1",
                     "native_text_layer_copied":False,"generation":request["generation"], "source_pool": source_coverage}

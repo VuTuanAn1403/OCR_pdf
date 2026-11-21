@@ -6,7 +6,7 @@ import re
 from typing import List, Optional
 from ocr_contracts.table import TableStructure
 from ocr_contracts.text_block import TextBlock
-from ocr_contracts.geometry import is_oriented_line_candidate
+from ocr_contracts.geometry import is_non_horizontal_line_candidate
 from .patterns import FINANCIAL_NUM_RE, HEADER_KEYWORDS_NORM, ENTITY_BULLET_RE, strip_accents
 from .segmentation import group_rows, segment_table_regions
 from .columns import discover_columns
@@ -52,7 +52,7 @@ class FinancialTableReconstructor:
                     or any(not math.isfinite(v) for v in b.bbox)
                     or b.bbox[0] >= b.bbox[2] or b.bbox[1] >= b.bbox[3]
                     or b.source in ("native", "vector", "docling")
-                    or is_oriented_line_candidate(b.recognition_provenance)):
+                    or is_non_horizontal_line_candidate(b.recognition_provenance)):
                 continue
             body_blocks.append(b)
 
@@ -86,7 +86,11 @@ class FinancialTableReconstructor:
         first_data_idx = -1
         for idx, l in enumerate(lines):
             nums = [b for b in l if FINANCIAL_NUM_RE.match(b.text.strip())]
-            has_dates_only = all(re.search(r"\b\d{1,2}/\d{1,2}/\d{4}\b", b.text) for b in nums) if nums else False
+            row_text = " ".join(b.text.strip() for b in l)
+            has_dates_only = bool(nums) and all(
+                re.search(r"\b\d{1,2}/\d{1,2}/\d{4}\b", b.text)
+                or (re.fullmatch(r"(?:19|20)\d{2}", b.text.strip())
+                    and HEADER_KEYWORDS_NORM.search(strip_accents(row_text))) for b in nums)
 
             if nums and not has_dates_only:
                 first_data_idx = idx

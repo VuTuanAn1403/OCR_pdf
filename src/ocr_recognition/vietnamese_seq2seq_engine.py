@@ -10,6 +10,9 @@ from vietocr.tool.predictor import Predictor
 from ocr_contracts.geometry import LINE_ORIENTATION_METHOD, VERTICAL_LINE_ORIENTATION_METHOD
 from ocr_recognition.primary_engine import BaseOCREngine
 from ocr_recognition.line_context import retry_line_context
+from ocr_recognition.line_orientation_policy import select_horizontal_direction
+from ocr_recognition.numeric_context import retry_numeric_context
+from ocr_recognition.long_line_context import retry_long_lines
 from ocr_runtime.paths import VIETOCR_FILES, registry_model_path, vietocr_model_dir, vietocr_registry_files
 from ocr_runtime.models import model_file_sha256
 from ocr_text.numeric_guard import preserves_numeric_evidence
@@ -179,7 +182,6 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
 
         boxes_and_crops = []
         h, w = img_bgr.shape[:2]
-
         for item in raw_det:
             # Handle both full recognition format [polygon, text, conf] and detection-only format polygon
             if isinstance(item, (list, tuple)) and len(item) in (2, 3) and not isinstance(item[1], (list, tuple, np.ndarray)):
@@ -201,7 +203,6 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             y0 = max(0, int(min(ys)) - 2)
             x1 = min(w, int(max(xs)) + 2)
             y1 = min(h, int(max(ys)) + 2)
-
             crop = img_bgr[y0:y1, x0:x1]
             if crop.size == 0 or crop.shape[0] < 4 or crop.shape[1] < 4:
                 continue
@@ -235,15 +236,34 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             pil_crops.extend(crop for _, crop in item["variants"])
         recognized_texts, recognized_probs = self._recognize_crops(pil_crops)
         context_audits = {}
+        numeric_context_audits = {}
+        long_line_audits = {}
         if getattr(self, "recognition_context", False):
+            original_crops = list(pil_crops)
             pil_crops, recognized_texts, recognized_probs, context_audits = retry_line_context(
                 pil_crops, recognized_texts, recognized_probs, self._recognize_crops)
+            pil_crops, recognized_texts, recognized_probs, numeric_context_audits = retry_numeric_context(
+                pil_crops, recognized_texts, recognized_probs, self._recognize_crops)
+            # Keep a successful full-line consensus for ordinary lines. Very
+            # long observed crops still need partitions to escape decoder truncation.
+            stable_context = {index for index,audit in context_audits.items()
+                              if audit['applied'] and len(recognized_texts[index]) < 120
+                              and original_crops[index].width <= 50 * original_crops[index].height}
+            recognized_texts, recognized_probs, long_line_audits = retry_long_lines(
+                original_crops, recognized_texts, recognized_probs, self._recognize_crops,
+                skip_indices=stable_context)
+            for index,audit in long_line_audits.items():
+                if audit['applied']:
+                    pil_crops[index] = original_crops[index]
             for item in boxes_and_crops:
                 item["variants"] = [(angle, pil_crops[index]) for (angle, _), index
                                     in zip(item["variants"], item["candidate_indices"])]
         # Only uncertain horizontal crops receive an upside-down candidate.
         # Existing vertical handling already tests both 90/270 directions.
         threshold = getattr(self, "horizontal_180_retry_threshold", None)
+        frame_hint = getattr(self, "frame_orientation_hint", None)
+        if isinstance(frame_hint, dict) and frame_hint.get("clockwise_degrees") == 0:
+            threshold = None
         upside_down = []
         if threshold is not None:
             for item in boxes_and_crops:
@@ -282,22 +302,42 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             # routing heuristic, never an independent accuracy certificate.
             indices = item["candidate_indices"]
             idx = max(indices, key=lambda i: (usable_at(i), bool(recognized_texts[i].strip()), probability_at(i)))
+            selection = "uncalibrated_recognizer_probability"
+            if len(indices) == 2 and [angle for angle, _ in item["variants"]] == [0, 180]:
+                idx, selection = select_horizontal_direction(
+                    indices[0], indices[1], recognized_texts,
+                    [probability_at(i) for i in range(len(recognized_texts))], usable_at)
             rotation = item["variants"][indices.index(idx)][0]
             crop_provenance = {}
             if len(indices) > 1:
-                crop_provenance = {
+                crop_provenance.update({
                     "method": (LINE_ORIENTATION_METHOD if item["variants"][-1][0] == 180
                                else VERTICAL_LINE_ORIENTATION_METHOD), "rotation_clockwise_degrees": rotation,
-                    "selection": "uncalibrated_recognizer_probability", "bbox_space": "original_image_pixels",
+                    "selection": selection, "bbox_space": "original_image_pixels",
                     "detector_bbox_pixels": list(item["bbox"]),
                     "crop_bbox_pixels": list(item["crop_bbox_pixels"]), "source_image_shape": list(img_bgr.shape),
                     "candidates": [{"rotation_clockwise_degrees": angle,
                                     "text_raw": recognized_texts[index], "confidence": probability_at(index)}
                                    for (angle, _), index in zip(item["variants"], indices)],
-                }
+                })
             context_readings = [{"rotation_clockwise_degrees": angle, **context_audits[index]}
                                 for (angle, _), index in zip(item["variants"], indices)
                                 if index in context_audits]
+            numeric_readings = [{"rotation_clockwise_degrees": angle, **numeric_context_audits[index]}
+                                for (angle, _), index in zip(item["variants"], indices)
+                                if index in numeric_context_audits]
+            long_readings = [{"rotation_clockwise_degrees": angle, **long_line_audits[index]}
+                             for (angle, _), index in zip(item["variants"], indices) if index in long_line_audits]
+            if long_readings:
+                crop_provenance['long_line_retry'] = {
+                    'readings':long_readings,'crop_bbox_pixels':list(item['crop_bbox_pixels']),
+                    'bbox_space':'original_image_pixels'}
+            if numeric_readings:
+                crop_provenance["numeric_context_retry"] = {
+                    "stage": "before_orientation", "readings": numeric_readings,
+                    "crop_bbox_pixels": list(item["crop_bbox_pixels"]),
+                    "bbox_space": "original_image_pixels",
+                }
             if context_readings:
                 crop_provenance["context_retry"] = {
                     "stage": "before_orientation", "readings": context_readings,
@@ -356,6 +396,10 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             review_reasons = (["numeric_cleanup_rejected"] if numeric_cleanup_rejected else [])
             if context_readings:
                 review_reasons.append("recognition_context_requires_review")
+            if numeric_readings:
+                review_reasons.append("numeric_context_requires_review")
+            if long_readings:
+                review_reasons.append('long_line_partition_requires_review')
             if repetition_reason and not numeric_cleanup_rejected:
                 review_reasons.append(repetition_reason)
             if len(indices) > 1:

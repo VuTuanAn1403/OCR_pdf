@@ -1,12 +1,10 @@
 """V6.3 phase A for one page (`ocr_source_policy: gpu_ocr_only_v1`, P09b).
 
-Full-page OCR of the rendered page, the layout model, heuristic tables,
-reading order, region statuses, quality and evidence. It runs only the V6.3
-path, so there is no native text extraction, two-up/multi-region split,
-orientation fallback, page cache or Docling (Docling is phase B). An optional
-bounded diacritic retry reads suspect line crops on the same GPU, retaining
-the full-page detections and coordinates. Shared package functions implement
-the steps used by both orchestrators.
+Full-page OCR of the rendered page remains mandatory. Additional observed
+region views use the same GPU, retaining full-page detection evidence and
+mapping region readings back into the page. Visible PDF glyph geometry can
+guide a turn but never supplies text. Docling runs separately in phase B.
+Bounded diacritic retries also retain source pixels, hypotheses and placement.
 """
 import logging
 import time
@@ -25,8 +23,10 @@ from ocr_document.xy_cut import METHOD as XY_CUT_METHOD
 from ocr_layout.steps import apply_layout_model, link_blocks_to_regions
 from ocr_pdf_io.coordinate_transform import page_display_chain
 from ocr_pdf_io.scan_image import acquire_page_image, full_page_image_provenance
+from ocr_pdf_io.orientation_regions import visible_orientation_geometry
 from ocr_recognition.blocks import mark_review_regions, ocr_results_to_blocks
 from ocr_recognition.inference import predict_image_counted
+from ocr_recognition.regional_ocr import frame_orientation, retry_reading_regions
 from ocr_recognition.diacritic_retry import retry_diacritic_blocks
 from ocr_recognition.short_token_retry import retry_short_token_blocks
 from ocr_recognition.detection_evidence import capture_primary_detections, input_image_identity
@@ -129,7 +129,11 @@ class TextPageExtractor:
         primary_input = input_image_identity(img_bgr)
         detector_evidence_duration = time.perf_counter() - t_evidence_start
         t_ocr_start = time.perf_counter()
-        ocr_results = predict_image_counted(self, img_bgr)
+        direction_geometry = visible_orientation_geometry(doc_page)
+        meta["orientation_geometry"] = direction_geometry
+        hint = {"method":direction_geometry["method"],"clockwise_degrees":0} if direction_geometry["upright"] else None
+        with frame_orientation(self.ocr_engine, hint):
+            ocr_results = predict_image_counted(self, img_bgr)
         # Regional retries update the detector's last-call telemetry. Keep
         # the primary full-page probe separate for the phase A GPU receipt.
         detector = getattr(self.ocr_engine, "_detector", None)
@@ -141,6 +145,12 @@ class TextPageExtractor:
         t_evidence_start = time.perf_counter()
         meta["primary_text_detection"] = capture_primary_detections(detector, primary_input, [page_w, page_h])
         detector_evidence_duration += time.perf_counter() - t_evidence_start
+        t_regional_start = time.perf_counter()
+        ocr_results, regional_record = retry_reading_regions(
+            self, img_bgr, ocr_results, direction_geometry, [page_w,page_h])
+        ocr_duration += time.perf_counter() - t_regional_start
+        if regional_record["views"]:
+            meta["regional_ocr"] = regional_record
         recognized_lines = len(ocr_results)
         recognizer_confidences = [r.get("confidence") for r in ocr_results if r.get("confidence") is not None]
         progress(f"[{page_num}/{total_pages}] primary={len(ocr_results)} lines time={ocr_duration:.2f}s", stage="ocr",

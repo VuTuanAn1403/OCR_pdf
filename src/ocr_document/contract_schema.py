@@ -303,7 +303,11 @@ def contract_json_schemas(*, include_layout: bool = False) -> Dict[str, Dict[str
 
 def _glyph_disposition_error(archived, disposition, owners, placements, consumed):
     """Replay optional glyph ownership evidence without altering legacy claims."""
-    from ocr_document.resolve_document_layout import _source_tokens
+    from ocr_document.resolve_document_layout import _cell_contains_placed_line, _source_tokens
+    # extraction.json rounds cell boxes to 0.01pt (±0.005pt); combined with
+    # PLACED_BOX_TOLERANCE_PT (0.004pt), 0.01pt covers export rounding without
+    # admitting genuinely displaced boxes.
+    export_eps = 0.01
     proof = disposition["placement_geometry"]
     bbox = placed_line_bbox(archived, proof)
     if (bbox is None or len(owners) != 1 or owners[0].kind != "t" or archived.get("protected_from_furniture")
@@ -327,11 +331,10 @@ def _glyph_disposition_error(archived, disposition, owners, placements, consumed
             cell = cells[index]
             words = unicodedata.normalize("NFC", cell.text_raw).split()
             offset = part.get("token_index")
-            box = [round(v, 2) for v in token["bbox"]]
             if (type(offset) is not int or not 0 <= offset < len(words) or words[offset] != token["text"]
                     or part.get("row_idx") != cell.row or part.get("col_idx") != cell.col
                     or cell.bbox_source != "cell"
-                    or not (cell.bbox[0] <= box[0] < box[2] <= cell.bbox[2] and cell.bbox[1] <= box[1] < box[3] <= cell.bbox[3])):
+                    or not _cell_contains_placed_line(token["bbox"], cell.bbox, eps=export_eps)):
                 return "glyph token does not exactly belong to its claimed source cell"
             observed.append((cell.row, cell.col, offset))
             claims.add((owners[0].id, index, offset))
@@ -348,9 +351,7 @@ def _glyph_disposition_error(archived, disposition, owners, placements, consumed
     if "placement_granularity" in disposition or len(set(indices)) != 1:
         return "glyph source must belong to one observed cell"
     cell = cells[indices[0]]
-    rounded = [round(value, 2) for value in bbox]
-    if cell.bbox_source != "cell" or not (cell.bbox[0] <= rounded[0] < rounded[2] <= cell.bbox[2]
-                                         and cell.bbox[1] <= rounded[1] < rounded[3] <= cell.bbox[3]):
+    if cell.bbox_source != "cell" or not _cell_contains_placed_line(bbox, cell.bbox, eps=export_eps):
         return "glyph box is not fully contained in its owning cell"
     tokens = unicodedata.normalize("NFC", cell.text_raw).split()
     positions = [part.get("token_index") for part in mapping]

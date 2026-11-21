@@ -66,6 +66,14 @@ def is_oriented_line_candidate(provenance: dict) -> bool:
     return provenance.get("method") in (VERTICAL_LINE_ORIENTATION_METHOD, LINE_ORIENTATION_METHOD)
 
 
+def is_non_horizontal_line_candidate(provenance: dict) -> bool:
+    """A tested zero-degree reading still has horizontal source geometry."""
+    return is_vertical_line_candidate(provenance) or (
+        provenance.get("method") == LINE_ORIENTATION_METHOD and (
+            type(provenance.get("rotation_clockwise_degrees")) is not int
+            or provenance["rotation_clockwise_degrees"] != 0))
+
+
 def block_is_covered(bbox: list[float], structures: list[Any], threshold: float = 0.8) -> bool:
     """Remove only blocks mostly contained in a successfully reconstructed item."""
     if len(bbox) != 4:

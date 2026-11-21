@@ -1,0 +1,245 @@
+{
+  "schema_version": "vng-core-fixes-diagnostic-v1",
+  "date": "2026-11-21",
+  "timezone": "Asia/Bangkok",
+  "base_commit": "1d748aec8de4f57710fe334216db2e0af72fb774",
+  "code_fingerprints": {
+    "extraction": "3c2fb9a542f281ab",
+    "analysis": "cc2cd38a0318db39",
+    "publication": "c2ab029d377d40d6"
+  },
+  "inputs": [
+    {
+      "pdf": "C:\\kk_2\\OCR_pdf\\scratch\\dev_sessions\\20261121-vng-core-fixes\\inputs_003\\VNG_Baocaothuongnien_2024_removed.pdf",
+      "sha256": "bc3f2c34fb96614ba9f49f139a968a342ac53df3e92d66ef424b6c384e19f49e",
+      "label": "a"
+    },
+    {
+      "pdf": "C:\\kk_2\\OCR_pdf\\scratch\\dev_sessions\\20261121-vng-core-fixes\\inputs_003\\VNG_Baocaothuongnien_2024_removed (1).pdf",
+      "sha256": "67ffe3925358b57d92cc1afba3532c2aa847fbe49b686448877423a562d63cc5",
+      "label": "b"
+    },
+    {
+      "pdf": "C:\\kk_2\\OCR_pdf\\scratch\\dev_sessions\\20261121-vng-core-fixes\\inputs_003\\VIB_Baocaothuongnien_2024 (1)_removed.pdf",
+      "sha256": "1072848c7dfb1a3d5e54946ff1a3749eccfc774b4336f74f3444bfad4a47b280",
+      "label": "vib_regression"
+    }
+  ],
+  "summary_of_fixes": [
+    "line_orientation_policy + visible_orientation_geometry: keep upright/numeric readings from false 180-degree flips while never copying native PDF text into OCR outputs.",
+    "reading_views + regional_ocr + RegionFrame: run GPU OCR on observed rotated panels and wide two-up facing pages after mandatory full-page OCR, preserving baseline hypotheses in metadata.",
+    "numeric_context + long_line_context: guarded multi-margin numeric consensus retry (3+ margins) and whitespace-split long-line retry keeping raw readings, full pixel coverage, and stable short controls unchanged.",
+    "financial_tables + region_views + table_selection + ocr_bridge: split wide spreads >900pt before financial geometry, prefer successful upright region tables over overlapping full-page/heuristic tables, and insert rotated bridge lines in upright reading order.",
+    "section_tree + resolve_document_layout + contract_schema: prevent rotated vertical footnotes from false horizontal TOC pairing/dropping, and use symmetric float32 containment tolerance (0.004pt resolve / 0.01pt export validation) across inverse-rotation rounding boundaries."
+  ],
+  "gpu_run": {
+    "output": "output\\vng_core_20261121_007",
+    "device": "cuda",
+    "assets": "none",
+    "retry_note": "Initial attempt of PDF B hit page_timeout_seconds=180 on page 1 under back-to-back laptop RTX 2050 thermal load; completed cleanly on --resume --retry-failed without changing code or receipts.",
+    "documents": [
+      {
+        "document_id": "VIB_Baocaothuongnien_2024 (1)_removed",
+        "pages": 2,
+        "source_fingerprint": "39bb113889b22820",
+        "models_fingerprint": "f5605b8aa481d6ca",
+        "scheduler_status": "COMPLETED",
+        "validation_status": "NEEDS_REVIEW",
+        "validation_errors": 0,
+        "validation_warnings": 11,
+        "local_artifacts_sha256": {
+          "ocr_receipt.json": "7f24590d165607694eee52ee57335947dd4ba7a4cbce7b7c021619eeddfab920",
+          "manifest.json": "0eed3304f70f38448cd8200187044b9f5b72708345518084408c2fff2e24d350",
+          "gpu_scheduler.json": "62ab68d99fcd78255f3af6bb74aa69cad397dfea4223bdac58b464f785c84960",
+          "validation.json": "9d144fb0ba236ba4bf20e4efe7d22c6c11c99118aae6504b53c086e533cee843",
+          "result.md": "98ac0f6f53c5d851df833e0c2589e600dbe2f1a141a223744e054660a5d511b7",
+          "result.txt": "a3c936112581e902a35bc3d11d1e7ae3330213a406f3a15402afc00919b24ea1"
+        }
+      },
+      {
+        "document_id": "VNG_Baocaothuongnien_2024_removed",
+        "pages": 3,
+        "source_fingerprint": "39bb113889b22820",
+        "models_fingerprint": "f5605b8aa481d6ca",
+        "scheduler_status": "COMPLETED",
+        "validation_status": "NEEDS_REVIEW",
+        "validation_errors": 0,
+        "validation_warnings": 175,
+        "local_artifacts_sha256": {
+          "ocr_receipt.json": "5c21d29cbbfd5bf0c0a1e4a84f256b2d3878eee736fe3485e852e5a2aa3764c0",
+          "manifest.json": "9bef6aabcfea3cab32a9bfc1d58008b0f80b7f3513260cb73eb533b1ee634655",
+          "gpu_scheduler.json": "a13e280199eb3e6e9e24370ba32c0cb132fe28c0560094458ad97af133e49e97",
+          "validation.json": "c578245dfc0b858438335eb79d39158a9c0903932c5302e8ed2a643d06203f0b",
+          "result.md": "cbd175c8807937af490b6a504ad19103942b84be63bff4408ed2907f8d4ca49c",
+          "result.txt": "a9b705dee49ba7fe0c3f5afab4af1fc77042fa3dad636f7f68cc254e157b3db1"
+        }
+      },
+      {
+        "document_id": "VNG_Baocaothuongnien_2024_removed (1)",
+        "pages": 3,
+        "source_fingerprint": "39bb113889b22820",
+        "models_fingerprint": "f5605b8aa481d6ca",
+        "scheduler_status": "COMPLETED",
+        "validation_status": "NEEDS_REVIEW",
+        "validation_errors": 0,
+        "validation_warnings": 227,
+        "local_artifacts_sha256": {
+          "ocr_receipt.json": "ecb61a417022409f07d94fe006c4e82134c2a4a98ac9e2241e5a6f29577adf0d",
+          "manifest.json": "59ccec6effff499977958f1420da77be95cf337876dca95ff3ea4dea0221b53e",
+          "gpu_scheduler.json": "4babbdbf285375f7d729f61ee3fbd2d3f42c723304563c7be34d313c78c5e8d1",
+          "validation.json": "851e4329247ff00a27e32e31765ab9afa003398038c4e2d112b763f8974732ff",
+          "result.md": "1125147263fdac0948e6248922d6640660dd28e91e0e22999151511a7708168d",
+          "result.txt": "9bc547898e843731e6f11b9147f8b28ff2516838ca6e64fefa519867ed5bc48b"
+        }
+      }
+    ],
+    "audit_report": "scratch/dev_sessions/20261121-vng-core-fixes/audit_007.json",
+    "audit_sha256": "f8bed410160808f716efce9244ec201e2457bc9aff26065bae6ed09fe4d9e490"
+  },
+  "diagnostic_observations": {
+    "vib_control": {
+      "diagnostic_matches": 7,
+      "diagnostic_total": 7,
+      "controls_unchanged": 57,
+      "controls_total": 57,
+      "changes_from_previous_fixed_output": 3,
+      "report": "scratch/dev_sessions/20261121-vng-core-fixes/vib_regression_vng_core_20261121_007.json",
+      "report_sha256": "41895a51f662091e1fe1536610c2b1c3eb9f398a30d28c8324b8bf758e4ad717"
+    },
+    "vng_pdf_a_result_md_tokens": {
+      "ĐIỂM NHẤN TÀI CHÍNH": true,
+      "12.271": true,
+      "7.547": true,
+      "3.420.741": true,
+      "91.143": true,
+      "2024": true
+    },
+    "vng_pdf_b_result_md_tokens": {
+      "700.000": true,
+      "176.310.230.000": true,
+      "21.000.000.000": true,
+      "141.924.950.000": true,
+      "Công ty Cổ phần Năng lượng sạch ninh thuận (i)": true,
+      "Công ty cổ phần khai thác và Quản lý Khu công nghiệp Đặng Huỳnh (ii)": true,
+      "DỰ PHÒNG (VND)": true,
+      "(VND) DỰ PHÒNG": false,
+      "1.367.263.951.314": true
+    },
+    "vng_pdf_b_rotated_pages_kept_for_review": {
+      "page_1": 0,
+      "page_3": 0
+    },
+    "inspection_report": "scratch/dev_sessions/20261121-vng-core-fixes/vng_core_20261121_007_inspection.json",
+    "inspection_sha256": "787d5320b23bb5124466421cd34ffe06223217b13bbd3870f4f831efd4bf8bef"
+  },
+  "checks": {
+    "targeted": {
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit/test_table_evidence_occurrences.py",
+        "tests/unit/test_v6_structure.py",
+        "tests/unit/test_v62_review_fixes.py",
+        "tests/unit/structure/test_region_views.py",
+        "tests/unit/test_import_contracts.py",
+        "-q",
+        "--capture=fd",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-145504-19ca7905\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-145504-19ca7905\\evidence\\junit.xml"
+      ],
+      "exit_code": 0,
+      "tests": 151,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 151,
+      "seconds": 21.646,
+      "local_evidence": "scratch/runs/20261121-145504-19ca7905",
+      "evidence_sha256": {
+        "run.json": "8ddd2e5077f8f33f1a54e8663392ee0fe08a864b098a7a5a79f9373a430556f0",
+        "logs/pytest.log": "72c46b78981a1994a244b83121fe33b1e6c353b0f0318d6a94feb3fac4847be6",
+        "evidence/junit.xml": "837f63afd314c0c76d1c3e5e44646097987977155af14e9bda625687a0f0a59f"
+      }
+    },
+    "full_regression": {
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit",
+        "tests/scientific",
+        "tests/legacy_compat",
+        "-q",
+        "--capture=fd",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-151041-a8dd10ef\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-151041-a8dd10ef\\evidence\\junit.xml"
+      ],
+      "exit_code": 0,
+      "tests": 2843,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 2842,
+      "seconds": 476.884,
+      "local_evidence": "scratch/runs/20261121-151041-a8dd10ef",
+      "evidence_sha256": {
+        "run.json": "4a375425fc12710d7e3f1ca557e82b92631a557337434ca881b3a724d04f85bc",
+        "logs/pytest.log": "819d2ae29f2f6ec53fcca515a3d04855e4f668a278a7563c69dc0e6075532d9c",
+        "evidence/junit.xml": "e7b5d3e45ce89ad06e735961b820897c2ae19f52173c2d16163a9f30c1cb69f0"
+      }
+    }
+  },
+  "historical_trials": [
+    {
+      "output": "output/vng_core_20261121_001",
+      "selected": false,
+      "note": "WinError 1455 while full pytest ran concurrently with GPU."
+    },
+    {
+      "output": "output/vng_core_20261121_002",
+      "selected": false,
+      "note": "Retained overlapping full-page 2x34 table on PDF B p1; superseded by region_views/table_selection fix."
+    },
+    {
+      "output": "output/vng_core_20261121_003",
+      "selected": false,
+      "note": "Stopped early after long_line_context regressed 2 VIB lines; fixed with skip_indices=stable_context."
+    },
+    {
+      "output": "output/vng_core_20261121_004",
+      "selected": false,
+      "note": "Interrupted mid-Phase-A before takeover."
+    },
+    {
+      "output": "output/vng_core_20261121_005",
+      "selected": false,
+      "note": "3/3 SUCCEEDED, uncovered 22 rotated footnotes dropped as toc_entry, 7 float32 rounding-boundary unmapped cells on PDF B p3, and reversed multi-line rotated cells."
+    },
+    {
+      "output": "output/vng_core_20261121_006",
+      "selected": false,
+      "note": "Fixed all 3 rotated-content defects; validation failed on PDF B because contract_schema still used independent 2dp rounding."
+    }
+  ],
+  "scope": {
+    "accuracy": "NOT_EVALUATED",
+    "gt": "Diagnostic checks against 3 user PDFs (8 pages) and visual inspection of source page PNGs; not an independent holdout GT.",
+    "known_limits": [
+      "Legacy heuristic table_layout/ocr.py still creates 2 small prose heuristic tables on VNG PDF A p2 (8x3) and p3 (4x2); text is preserved and flagged NEEDS_REVIEW.",
+      "On warm laptop RTX 2050, dense multi-region rotated pages (~187 lines + 3 rotated views) can approach page_timeout_seconds=180.",
+      "Diacritic release gate (99.99%), TEDS/CER/WER on independent holdout, and Kaggle Linux runtime remain NOT_EVALUATED for this identity."
+    ],
+    "artifact_availability": "PDFs, logs, outputs, and page PNGs remain local only; commands, diagnostic counts, identity, and SHA-256 hashes are published here."
+  },
+  "runtime": {
+    "diagnostic_gpu": "NVIDIA GeForce RTX 2050",
+    "platform": "Windows; supervisor Python 3.11, isolated text/Docling workers"
+  }
+}

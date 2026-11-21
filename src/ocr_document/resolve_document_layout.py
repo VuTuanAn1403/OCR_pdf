@@ -55,17 +55,21 @@ def _cell_at_source(source_box, cell_box):
             and y_overlap / min(source_box[3] - source_box[1], cell_box[3] - cell_box[1]) >= .5)
 
 
-def _cell_contains_placed_line(source_box, cell_box):
-    """Use the same two-decimal point precision as exported cell contracts.
+PLACED_BOX_TOLERANCE_PT = 0.004
 
-    Docling and PyMuPDF can report the same hidden-line edges with float32
-    differences. Original boxes stay immutable; ambiguity still abstains.
+
+def _cell_contains_placed_line(source_box, cell_box, *, eps: float = PLACED_BOX_TOLERANCE_PT):
+    """Compare hidden-line bounds against an owning cell with float32 slack.
+
+    Docling and PyMuPDF can report the same hidden-line edges with float32 or
+    inverse-rotation differences. Compare with a symmetric tolerance instead of
+    rounding each edge independently across half-cent boundaries.
+    Original boxes stay immutable; ambiguity still abstains.
     """
     if not valid_bbox(source_box) or not valid_bbox(cell_box):
         return False
-    source, cell = ([round(value, 2) for value in box] for box in (source_box, cell_box))
-    return (cell[0] <= source[0] < source[2] <= cell[2]
-            and cell[1] <= source[1] < source[3] <= cell[3])
+    return (cell_box[0] - eps <= source_box[0] < source_box[2] <= cell_box[2] + eps
+            and cell_box[1] - eps <= source_box[1] < source_box[3] <= cell_box[3] + eps)
 
 
 def _table_occurrences(source, table, rows, used, *, placement_bbox=None, placement_tokens=None):

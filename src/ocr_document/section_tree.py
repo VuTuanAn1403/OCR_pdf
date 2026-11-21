@@ -334,10 +334,16 @@ def _toc_lines(lines: Sequence[Line]) -> List[Line]:
     return list(lines) if explicit or navigation else [line for line in lines if not line.table_source_unresolved]
 
 
+def _is_vertical_box(bbox: Sequence[float]) -> bool:
+    return len(bbox) == 4 and (bbox[3] - bbox[1]) > 2.0 * max(1.0, bbox[2] - bbox[0])
+
+
 def _toc_entries_with_sources(lines: Sequence[Line]) -> List[Tuple[str, int, List[str]]]:
     lines = _toc_lines(lines)
     entries = []
-    numbers = [line for line in lines if len(line.bbox) == 4 and re.fullmatch(r"\d{1,3}", line.text.strip())]
+    numbers = [line for line in lines if len(line.bbox) == 4 and not _is_vertical_box(line.bbox)
+               and re.fullmatch(r"\d{1,3}", line.text.strip())]
+    used_numbers = set()
     for line in lines:
         text = line.text.strip()
         if line in numbers:
@@ -346,13 +352,15 @@ def _toc_entries_with_sources(lines: Sequence[Line]) -> List[Tuple[str, int, Lis
         if match and len(_letters(match.group(1))) >= 3:
             entries.append((normalize_title(match.group(1)), int(match.group(2)), [line.item_id]))
             continue
-        if len(_letters(text)) < 3 or len(line.bbox) != 4:
+        if len(_letters(text)) < 3 or len(line.bbox) != 4 or len(text) > 120 or _is_vertical_box(line.bbox):
             continue
         mid = (line.bbox[1] + line.bbox[3]) / 2
-        same_row = [n for n in numbers if n.bbox[0] >= line.bbox[2] - 1
-                    and abs((n.bbox[1] + n.bbox[3]) / 2 - mid) <= 0.6 * line.height]
+        same_row = [n for n in numbers if n.item_id not in used_numbers
+                    and n.bbox[0] >= line.bbox[2] - 1
+                    and abs((n.bbox[1] + n.bbox[3]) / 2 - mid) <= 0.6 * min(line.height, 2.0 * n.height)]
         if same_row:
             nearest = min(same_row, key=lambda n: n.bbox[0] - line.bbox[2])
+            used_numbers.add(nearest.item_id)
             entries.append((normalize_title(text), int(nearest.text), [line.item_id, nearest.item_id]))
     return entries
 
