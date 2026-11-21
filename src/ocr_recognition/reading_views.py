@@ -3,6 +3,7 @@ import re
 
 import cv2
 import numpy as np
+from ocr_recognition.observed_regions import augment_observed_regions
 
 
 def plan_reading_views(image, results, page_size, directions):
@@ -14,14 +15,15 @@ def plan_reading_views(image, results, page_size, directions):
         box=[max(0,int(np.floor(x0*width/page_width))),max(0,int(np.floor(y0*height/page_height))),
              min(width,int(np.ceil(x1*width/page_width))),min(height,int(np.ceil(y1*height/page_height)))]
         plans.append({**item,"pixel_bbox":box})
-    if not plans and width > 1.25*height:
+    plans=augment_observed_regions(results,plans,image.shape,directions)
+    if width > 1.25*height:
         folios=[[] for _ in range(2)]
         labels=[0,0]
         for row in results:
             box=row.get("bbox",[]);text=row.get("text","").strip()
             if len(box)!=4:continue
             x=(box[0]+box[2])/2;y=(box[1]+box[3])/2;side=int(x>=width/2)
-            if y>.95*height and (x<.12*width or x>.88*width) and re.fullmatch(r"\d{1,4}",text):
+            if y>.93*height and (x<.12*width or x>.88*width) and re.fullmatch(r"\d{1,4}",text):
                 folios[side].append(text)
             if sum(c.isalpha() for c in text)>=5:labels[side]+=1
         if all(folios) and folios[0]!=folios[1] and min(labels)>=8:
@@ -38,9 +40,14 @@ def plan_reading_views(image, results, page_size, directions):
             if bands:
                 left,right=min(bands,key=lambda b:abs((b[0]+b[1])/2-width/2))
                 cut=(left+right)//2
-                plans=[{"id":f"facing_page_{i+1}","pixel_bbox":box,"clockwise_degrees":0,
+                panels=[{"id":f"facing_page_{i+1}","pixel_bbox":box,"clockwise_degrees":0,
                         "method":"paired-folio-gutter-v1"}
                        for i,box in enumerate(([0,0,cut,height],[cut,0,width,height]))]
+                for panel in panels:
+                    box=panel['pixel_bbox']
+                    if not any(max(box[0],p['pixel_bbox'][0])<min(box[2],p['pixel_bbox'][2])
+                               and max(box[1],p['pixel_bbox'][1])<min(box[3],p['pixel_bbox'][3]) for p in plans):
+                        plans.append(panel)
     for plan in plans:
         x0,y0,x1,y1=plan["pixel_bbox"]
         plan["bbox"]=[x0*page_width/width,y0*page_height/height,x1*page_width/width,y1*page_height/height]

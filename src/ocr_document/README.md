@@ -23,3 +23,5 @@ Ghép trang, reading order/furniture, ID ổn định, Markdown/JSON và validat
 - `section_tree._toc_entries_with_sources` loại bbox dọc/xoay, giới hạn độ dài 120 ký tự, ràng buộc dung sai ghép hàng theo cả chiều cao dòng và số trang, đồng thời chỉ gán mỗi token số tối đa một lần để không nhận nhầm chú thích xoay thành `toc_entry`. `_cell_contains_placed_line` dùng dung sai đối xứng `PLACED_BOX_TOLERANCE_PT = 0,004pt` (`contract_schema` dùng `0,01pt` bù làm tròn 2dp khi xuất `extraction.json`) tránh rớt ô bảng xoay ở biên làm tròn float32 mà không nới lỏng ô lệch vị trí.
 
 [Cài đặt, cách chạy và kiểm thử](../../README.md).
+
+- `regional_order` dùng khung quarter-turn quan sát của pha A để xếp đoạn mở đầu/bảng/chú thích trong chiều đọc thẳng; thứ tự ngoài vùng vẫn do region tree. Bbox nguồn không đổi, frame và cây tọa độ cục bộ ghi trong layout sidecar. `region-tree-graph-v1.6` đồng thời bỏ đúng bản lặp body đã có whole-block source proof trong bảng hình học; nếu ô không còn khớp, nguồn được phục hồi để review. Không dedup toàn cục theo chuỗi hay chỉ theo vùng bao.

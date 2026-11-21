@@ -33,6 +33,9 @@ def run_structure(request):
     from ocr_structure.docling_client import DoclingStructureExtractor
     from ocr_structure.enrichment import enrich_structures
     from ocr_structure.region_views import RegionStructureExtractor
+    from ocr_structure.small_image_tables import reconstruct_small_image_tables
+    from ocr_structure.text_table_alignment import align_text_tables
+    from ocr_contracts.geometry import block_is_covered
     text_root, root = stage_dir(request, "text"), stage_dir(request, "structure")
     checkpoint = read(receipt_path(request, "text"))
     extractor = DoclingStructureExtractor(request["config"]["docling"])
@@ -45,6 +48,11 @@ def run_structure(request):
                 raise ValueError("Phase B processing view differs from phase A")
             for name in sorted(checkpoint["files"]):
                 page = ExtractedPage.model_validate(read(text_root / name))
+                small_tables=reconstruct_small_image_tables(page)
+                if small_tables:
+                    removed=[t for t in page.tables if t.engine=='heuristic' and block_is_covered(t.bbox,small_tables,.8)]
+                    page.metadata['superseded_small_image_heuristics']=[t.model_dump(mode='json') for t in removed]
+                    page.tables=[t for t in page.tables if t not in removed]+small_tables
                 before = time.perf_counter()
                 from ocr_structure.ocr_bridge import ocr_bridge, unplaced_visible_block_indices
                 orientation_placements = []
@@ -63,6 +71,7 @@ def run_structure(request):
                     page.blocks, page.tables, page.formulas = enrich_structures(
                         page_extractor, bridge[0], page.page_num, page.page_type, page.blocks,
                         page.tables, page.regions, page.metadata, bridge_unplaced_indices=unplaced)
+                    page.tables=align_text_tables(page)
                 page.metadata["ocr_structure_bridge"] = {"policy":"raster-plus-gpu-text-v1",
                     "native_text_layer_copied":False,"generation":request["generation"], "source_pool": source_coverage}
                 if orientation_placements:

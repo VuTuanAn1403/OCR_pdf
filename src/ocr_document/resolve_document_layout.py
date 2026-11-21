@@ -5,6 +5,7 @@ import unicodedata
 
 from ocr_artifacts.digest import sha256_json_unicode
 from ocr_document.region_tree import LayoutItem, infer_region_tree, METHOD
+from ocr_document.regional_order import infer_observed_region_tree
 from ocr_document.resolve_document_furniture import resolve_document_furniture
 from ocr_document.ids import page_items
 from ocr_document.source_identity import assign_source_ids
@@ -16,7 +17,7 @@ from ocr_contracts.geometry import block_is_covered, is_oriented_line_candidate,
 from ocr_document.source_identity import valid_bbox
 from ocr_text.numeric_guard import preserves_numeric_evidence
 
-ALGORITHM_VERSION = "region-tree-graph-v1.5"
+ALGORITHM_VERSION = "region-tree-graph-v1.6"
 RECONCILIATION_METHOD = "exact-source-occurrence-v2"
 GLYPH_RECONCILIATION_METHOD = "exact-source-occurrence-glyph-v3"
 TOKEN_RECONCILIATION_METHOD = "exact-source-occurrence-token-v4"
@@ -136,8 +137,31 @@ def _reconcile_evidence(page):
         page.metadata["source_reconciliation_method"] = RECONCILIATION_METHOD
     else:
         page.metadata.pop("source_reconciliation_method", None)
-    # Revisit only blocks restored by an earlier reconciliation. Other visible
-    # occurrences still belong to the body and are never globally deduplicated.
+    # A late source-checked geometry table can represent text still present in
+    # the body. Remove only an exact, uniquely bound duplicate; reconciliation
+    # below restores the source if its actual cell occurrence no longer agrees.
+    claims = {}
+    for table in page.tables:
+        proof = table.provenance
+        if (table.engine == "deterministic_geometry" and proof.get("source_coverage") == "COMPLETE"
+                and proof.get("numeric_guard") == "PRESERVED"
+                and proof.get("source_mapping_method") == "whole-ocr-block-cell-v1"):
+            for record in proof.get("source_blocks", []):
+                claims.setdefault(record.get("source_id"), []).append(record)
+    duplicates = []
+    for block in page.blocks:
+        records = claims.get(block.source_id, [])
+        if len(records) == 1:
+            record = records[0]
+            raw = block.text if block.text_raw is None else block.text_raw
+            if record.get("bbox") == block.bbox and record.get("text") == block.text and record.get("text_raw") == raw:
+                duplicates.append(block.source_id)
+    page.blocks = [block for block in page.blocks if block.source_id not in duplicates]
+    page.quality.total_blocks = max(0, page.quality.total_blocks - len(duplicates))
+    if duplicates:
+        page.metadata["bound_table_body_duplicates"] = duplicates
+    # Other visible occurrences still belong to the body; do not deduplicate
+    # them by text or by rectangle overlap alone.
     frozen_ids = {source["source_id"] for source in evidence}
     restored_codes = {"TABLE_SOURCE_UNMAPPED", "TABLE_FURNITURE_CONFLICT"}
     revisited = {b.source_id: b for b in page.blocks
@@ -317,7 +341,8 @@ def resolve_document_layout(doc, settings=None):
             role = entry.role
             destination = headers if role in ("header", "running_header") else footers if role in ("footer", "running_footer") else numbers if role == "page_number" else body
             destination.append(entry)
-        layout = infer_region_tree(body, min_gap=settings.get("min_gap", 3.0))
+        layout = infer_observed_region_tree(body, page.metadata.get('regional_ocr',{}).get('views',[]),
+                                            min_gap=settings.get("min_gap", 3.0))
         def peripheral(group):
             return sorted(group, key=lambda b: (b.bbox[1] if b.bbox else float("inf"), b.id))
         source_flow = [b.id for b in peripheral(headers)] + layout.ordered_ids + [b.id for b in peripheral(footers + numbers)]

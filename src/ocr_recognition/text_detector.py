@@ -67,6 +67,14 @@ class ONNXTextDetector:
         opts.profile_file_prefix = str(profile_dir / "detector")
         provider_config = (provider, {"gpu_mem_limit": int(options.get("gpu_mem_limit_mb", 1024)) * 1024**2,
                                       "cudnn_conv_algo_search": "HEURISTIC"}) if device == "cuda" else provider
+        self.run_options = None
+        if device == "cuda":
+            # Region views have different tensor shapes. Release unused arena
+            # chunks after each run so earlier shapes cannot exhaust the fixed
+            # detector budget later in a document. Keep the same GPU limit,
+            # model, resolution and thresholds; never retry on the CPU.
+            self.run_options = ort.RunOptions()
+            self.run_options.add_run_config_entry("memory.enable_memory_arena_shrinkage", "gpu:0")
         self.session = ort.InferenceSession(str(path), sess_options=opts, providers=[provider_config])
         self.session.disable_fallback()
         if self.session.get_providers()[0] != provider:
@@ -135,7 +143,11 @@ class ONNXTextDetector:
         self.inference_calls += 1
         self.last_input_shape = list(image.shape)
         tensor, geometry = self.prepare(image)
-        output = self.session.run([self.output_name], {self.input_name: tensor})[0]
+        run_options = getattr(self, "run_options", None)
+        if run_options is None:
+            output = self.session.run([self.output_name], {self.input_name: tensor})[0]
+        else:
+            output = self.session.run([self.output_name], {self.input_name: tensor}, run_options=run_options)[0]
         self.last_detections = self.decode(output, geometry)
         if self.placement is None:
             profile = Path(self.session.end_profiling())

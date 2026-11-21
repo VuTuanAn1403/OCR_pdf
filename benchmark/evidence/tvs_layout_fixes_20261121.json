@@ -1,0 +1,583 @@
+{
+  "scope": "DEVELOPMENT_DIAGNOSTIC_NOT_RELEASE_GT",
+  "accuracy": "NOT_EVALUATED",
+  "git_head": "db7a8ac2c6b4376898519e48e835618d0b9edde9",
+  "code_state": "WORKING_TREE_UNCOMMITTED",
+  "code_fingerprints": {
+    "extraction": "d585dc6a7ac523f8",
+    "analysis": "cc2cd38a0318db39",
+    "publication": "c2ab029d377d40d6"
+  },
+  "full_source_fingerprint": "383dd1fd15005058",
+  "source_file_sha256": {
+    "src/ocr_recognition/observed_regions.py": "67f67097d7d75299d7f9565a2123a0d34e8d6dd95eccc6f0938013fa33c9d1e1",
+    "src/ocr_recognition/reading_views.py": "7e9f63509136c4c2b30cb775c780f82f75010f1887ac655dc1bc0ac7b780080e",
+    "src/ocr_recognition/text_detector.py": "d83f3480679462c61bea1aabb1b7df3d48e35c8a6cfb470c151ed887c93d7005",
+    "src/ocr_structure/small_image_tables.py": "dcc64f8c1ab1be4a02efaebe8d1120a29de1b1c1727fdc37af735626fd3e04e1",
+    "src/ocr_structure/text_table_alignment.py": "d3353b4a6033c0183fa3e0bf68c9e3370649945919a07f00dbfce3295f72313f",
+    "src/ocr_workers/phase_structure.py": "36199da051660da535bd317c2140604b87c0a7be101ad7f442db9525c781854b",
+    "src/ocr_document/regional_order.py": "bdec830283d53d666b124ba2abe2fae7b3a8aa5be63b2a7bed4d46677b875762",
+    "src/ocr_document/resolve_document_layout.py": "e2eaf6a2aedf6bc1a570ba311602bb05e0f0efd124c4fbc865137216096a3661"
+  },
+  "input": {
+    "pdf_sha256": "6aa589e04da08c195c8fd10d67789721d0525fc723aae7778a92251680c247a6",
+    "pages": 7,
+    "preserved_copy": "scratch\\dev_sessions\\20261121-tvs-layout\\TVS_Baocaothuongnien_2024_removed.pdf",
+    "original_exists": true,
+    "original_still_matches": true
+  },
+  "output": "output\\tvs_layout_20261121_007\\TVS_Baocaothuongnien_2024_removed",
+  "profile": "unified_gpu_full_ocr",
+  "manifest_source_fingerprint": "383dd1fd15005058",
+  "gpu_stages": {
+    "text": {
+      "key": "fd3428a2d7fb17a37cab315f1342faeeeade6f0d8a1a817bb38dd1d3460d6d12",
+      "reused": true,
+      "receipt_sha256": "82bf0a7cc4b2c5110f687e27166e2e403022cc1b53c4ff758c7c7116e3c9466f",
+      "produced_by_generation": "b2288f817d9f022dc69e0e430633347968932b2b251de46313e174ffd8baa70e",
+      "historical_seconds": 802.7991573999998
+    },
+    "structure": {
+      "key": "9109e4854470aaba217821606909cffd03ea0a7b3bc8096b1b43b4c8a775e8e9",
+      "reused": true,
+      "receipt_sha256": "f8aaf48cc686b3fa9d77537aed9194d26e50d80ed012c702e1b5b750001004c8",
+      "produced_by_generation": "f262f15c38928b3a85980e1d0272182376c008b6c5afda03d523e125725d3225",
+      "historical_seconds": 70.61580219999996
+    },
+    "export": {
+      "key": "8d32f56af7fe1697d6a778d0d432d58969de48edb7899c913d5e6246ecbfb6f5",
+      "reused": false
+    }
+  },
+  "verification": {
+    "completion_valid": true,
+    "full_coverage": true,
+    "gpu_source_gate": "PASS",
+    "validation_status": "NEEDS_REVIEW",
+    "validation_errors": 0,
+    "validation_warnings": 193
+  },
+  "layout_diagnostic": {
+    "reference": "scratch/dev_sessions/20261121-tvs-layout/layout_diagnostic_targets.json",
+    "pages_matching_column_inventory": 7,
+    "pages_checked": 7,
+    "tables_seen": 17,
+    "source_order_intro_table_note_verified": true,
+    "exact_body_duplicate_source_ids": [
+      "6aa589e04da08c19:p0001:b000007",
+      "6aa589e04da08c19:p0001:b000008",
+      "6aa589e04da08c19:p0001:b000024",
+      "6aa589e04da08c19:p0001:b000027"
+    ],
+    "pages": [
+      {
+        "page": 1,
+        "expected_columns": [
+          3,
+          3,
+          3,
+          2,
+          7
+        ],
+        "before_shapes": [
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            16,
+            9
+          ]
+        ],
+        "after_shapes": [
+          [
+            3,
+            3
+          ],
+          [
+            19,
+            7
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            6,
+            3
+          ],
+          [
+            6,
+            2
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p1_small_image_1",
+            "engine": "deterministic_geometry",
+            "bbox": [
+              37.38,
+              83.11,
+              557.38,
+              175.74
+            ],
+            "orientation": null
+          },
+          {
+            "id": "p1_view1_p1_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              748.241918288652,
+              93.23552738162185,
+              1066.2169121208212,
+              793.3010879434112
+            ],
+            "orientation": "rot_270"
+          },
+          {
+            "id": "p1_view2_p1_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              35.88545490755199,
+              220.4085034134382,
+              555.348781286315,
+              307.63744740574487
+            ],
+            "orientation": "rot_0"
+          },
+          {
+            "id": "p1_view2_p1_docling_table_2",
+            "engine": "docling_tableformer",
+            "bbox": [
+              32.82658030133714,
+              378.69752926425525,
+              557.5387511253559,
+              522.7041652478289
+            ],
+            "orientation": "rot_0"
+          },
+          {
+            "id": "p1_view2_p1_docling_table_3_aligned",
+            "engine": "deterministic_geometry",
+            "bbox": [
+              35.12,
+              615.0,
+              542.69,
+              783.23
+            ],
+            "orientation": "rot_0"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 16,
+          "REPLACED_BY_TABLE": 147
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      },
+      {
+        "page": 2,
+        "expected_columns": [
+          7,
+          7
+        ],
+        "before_shapes": [
+          [
+            6,
+            13
+          ],
+          [
+            1,
+            30
+          ]
+        ],
+        "after_shapes": [
+          [
+            14,
+            7
+          ],
+          [
+            11,
+            7
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p2_view1_p2_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              227.5202520792643,
+              81.5469638667339,
+              477.24335417441483,
+              781.1511754323108
+            ],
+            "orientation": "rot_270"
+          },
+          {
+            "id": "p2_view2_p2_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              692.7813811551493,
+              81.38578689695225,
+              1052.006432905877,
+              777.4882628257698
+            ],
+            "orientation": "rot_270"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 8,
+          "REPLACED_BY_TABLE": 178
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      },
+      {
+        "page": 3,
+        "expected_columns": [
+          5
+        ],
+        "before_shapes": [
+          [
+            4,
+            13
+          ]
+        ],
+        "after_shapes": [
+          [
+            20,
+            5
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p3_view1_p3_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              131.74279223293365,
+              85.57791874985449,
+              429.6565947434288,
+              785.5867061253579
+            ],
+            "orientation": "rot_270"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 24,
+          "REPLACED_BY_TABLE": 58
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      },
+      {
+        "page": 4,
+        "expected_columns": [
+          8,
+          8
+        ],
+        "before_shapes": [
+          [
+            35,
+            9
+          ],
+          [
+            25,
+            9
+          ]
+        ],
+        "after_shapes": [
+          [
+            19,
+            8
+          ],
+          [
+            29,
+            8
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p4_view1_p4_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              143.92146981520057,
+              85.0996336504437,
+              469.2355868238377,
+              785.8155470025405
+            ],
+            "orientation": "rot_270"
+          },
+          {
+            "id": "p4_view2_p4_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              706.4438916653137,
+              83.28050739068989,
+              1079.021845204773,
+              792.0606494997118
+            ],
+            "orientation": "rot_270"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 7,
+          "REPLACED_BY_TABLE": 232
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      },
+      {
+        "page": 5,
+        "expected_columns": [
+          8,
+          3,
+          3
+        ],
+        "before_shapes": [
+          [
+            10,
+            9
+          ],
+          [
+            11,
+            3
+          ]
+        ],
+        "after_shapes": [
+          [
+            26,
+            8
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            6,
+            3
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p5_view1_p5_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              121.80471463979086,
+              81.94917566019296,
+              474.2788124089688,
+              792.2189878400238
+            ],
+            "orientation": "rot_270"
+          },
+          {
+            "id": "p5_view2_p5_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              630.6875492932109,
+              157.72475326429355,
+              1141.3009278719305,
+              270.379162437457
+            ],
+            "orientation": "rot_0"
+          },
+          {
+            "id": "p5_view2_p5_docling_table_2",
+            "engine": "docling_tableformer",
+            "bbox": [
+              630.4892730593227,
+              508.5781727926295,
+              1143.452054557951,
+              785.2409075391321
+            ],
+            "orientation": "rot_0"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 17,
+          "REPLACED_BY_TABLE": 178,
+          "KEPT_FOR_REVIEW": 1
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      },
+      {
+        "page": 6,
+        "expected_columns": [
+          5,
+          5
+        ],
+        "before_shapes": [
+          [
+            4,
+            9
+          ],
+          [
+            4,
+            12
+          ]
+        ],
+        "after_shapes": [
+          [
+            17,
+            5
+          ],
+          [
+            19,
+            5
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p6_view1_p6_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              155.64541386691775,
+              81.84018650335685,
+              446.95586591667893,
+              791.5489126903193
+            ],
+            "orientation": "rot_270"
+          },
+          {
+            "id": "p6_view2_p6_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              786.7126762869499,
+              83.65976393715084,
+              1093.0970863386142,
+              792.0900180596711
+            ],
+            "orientation": "rot_270"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 7,
+          "REPLACED_BY_TABLE": 112
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      },
+      {
+        "page": 7,
+        "expected_columns": [
+          7,
+          7
+        ],
+        "before_shapes": [
+          [
+            25,
+            9
+          ],
+          [
+            12,
+            9
+          ]
+        ],
+        "after_shapes": [
+          [
+            27,
+            7
+          ],
+          [
+            30,
+            7
+          ]
+        ],
+        "logical_columns_match": true,
+        "tables": [
+          {
+            "id": "p7_view1_p7_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              105.53317801499827,
+              82.31238293191194,
+              427.253675861722,
+              799.5154616997016
+            ],
+            "orientation": "rot_270"
+          },
+          {
+            "id": "p7_view2_p7_docling_table_1",
+            "engine": "docling_tableformer",
+            "bbox": [
+              691.4999875081046,
+              82.82577383614425,
+              1041.1127989730628,
+              790.9614348506487
+            ],
+            "orientation": "rot_270"
+          }
+        ],
+        "source_dispositions": {
+          "VISIBLE_OR_FURNITURE": 8,
+          "REPLACED_BY_TABLE": 210
+        },
+        "docling_status": "success",
+        "docling_errors": []
+      }
+    ]
+  },
+  "regression": {
+    "tests": 2863,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 2862,
+    "run": "scratch\\runs\\20261121-192249-84e50420",
+    "exit_code": 0
+  },
+  "evidence": {
+    "audit": "scratch/dev_sessions/20261121-tvs-layout/audit_007.json",
+    "detector_memory": "scratch/dev_sessions/20261121-tvs-layout/detector_memory_probe.json",
+    "session": "scratch/dev_sessions/20261121-tvs-layout/session.md"
+  },
+  "limitations": [
+    "The 17-table inventory is a development layout diagnostic, not independent release GT.",
+    "OCR spelling, punctuation and numbers still need review; raw readings were not edited to match targets.",
+    "One preserved review source on page5 is the printed folio179.",
+    "Historical VNG/VIB region-plan regression covers8pages; their prior GPU accuracy is not transferred to this identity.",
+    "Runtime receipts and scratch outputs are local and must accompany this report for reproduction."
+  ],
+  "cpu_export_regression": [
+    {
+      "document": "VIB_Baocaothuongnien_2024 (1)_removed",
+      "pages": 2,
+      "frozen_unchanged": true,
+      "contract_errors": 0,
+      "markdown_unchanged": true
+    },
+    {
+      "document": "VNG_Baocaothuongnien_2024_removed",
+      "pages": 3,
+      "frozen_unchanged": true,
+      "contract_errors": 0,
+      "markdown_unchanged": true
+    },
+    {
+      "document": "VNG_Baocaothuongnien_2024_removed (1)",
+      "pages": 3,
+      "frozen_unchanged": true,
+      "contract_errors": 0,
+      "markdown_unchanged": false
+    }
+  ],
+  "layout_algorithm_version": "region-tree-graph-v1.6"
+}

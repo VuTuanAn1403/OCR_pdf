@@ -29,6 +29,15 @@ def test_rotated_panel_takes_priority_and_maps_rounded_pixel_edges_back_to_point
     image = np.full((1000, 1400, 3), 255, np.uint8)
     directions = {'regions': [dict(id='panel', bbox=[20.1, 30.1, 200.1, 400.1],
                                   clockwise_degrees=90, method='observed') ]}
-    plan, = plan_reading_views(image, spread_rows(), (700, 500), directions)
+    plan, upright = plan_reading_views(image, spread_rows(), (700, 500), directions)
     assert plan['pixel_bbox'] == [40, 60, 401, 801]
     assert plan['bbox'] == [20, 30, 200.5, 400.5]
+    assert upright['clockwise_degrees']==0 and upright['bbox'][0]>=349
+
+
+def test_folios_with_a_larger_bottom_margin_still_identify_independent_panels():
+    rows=spread_rows()
+    rows[0]['bbox']=[10,935,30,950]
+    rows[1]['bbox']=[1370,935,1390,950]
+    plans=plan_reading_views(np.full((1000,1400,3),255,np.uint8),rows,(700,500),{})
+    assert len(plans)==2 and all(p['clockwise_degrees']==0 for p in plans)

@@ -21,3 +21,7 @@ Detector/recognizer, đánh giá chữ, routing và các bước inference. Khô
 - `numeric_context` retry chuỗi có dấu phân cách lặp và nhóm số cuối chưa đủ. Chỉ chọn toàn bộ dự đoán model khi ít nhất ba lề trắng khác nhau đều đồng thuận, giữ chữ số đầu/dấu/định dạng; không tính hoặc tự điền số. Raw baseline và mọi dự đoán được lưu; khác số luôn yêu cầu review.
 
 - `long_line_context` chia dòng yếu hoặc sát giới hạn decoder tại khoảng trắng quan sát trên ảnh. Các đoạn liên tiếp phủ đủ pixel của crop nguồn; không suy bbox từ số ký tự. Dòng ngắn confidence cao giữ nguyên. Chỉ ghép toàn bộ raw reading của các đoạn đọc được, lưu baseline/đoạn/toạ độ/xác suất; khác số và kết quả chia dòng luôn cần review. Không cho retry toàn dòng sau đó cắt ngắn lại bản đọc đã ghép. Test: `tests/unit/recognition/test_long_line_context.py`.
+
+- `observed_regions` bổ sung vùng bảng ảnh xoay từ bbox detector dọc: hướng cần nhãn đọc được đồng thuận hoặc hỗ trợ hướng glyph nhìn thấy; không lấy confidence của số làm bằng chứng chiều đọc. Vùng native đầy đủ giữ ưu tiên, strip native chưa đủ được nhập vào vùng quan sát. Trên spread có hai folio khác nhau ở mép ngoài/gáy trắng, đọc thêm panel thẳng chưa có vùng xoay; crop không chồng nhau. Test: `test_observed_regions.py`, `test_reading_views.py`; kết quả vẫn cần review.
+
+- Detector CUDA dùng RunOptions thu hồi phần arena GPU không dùng sau mỗi inference để nhiều kích thước crop không làm cạn budget giữa tài liệu. Giới hạn bộ nhớ, model, ngưỡng và độ phân giải vẫn lấy từ cấu hình; lỗi vẫn được báo, không chuyển CPU OCR.
