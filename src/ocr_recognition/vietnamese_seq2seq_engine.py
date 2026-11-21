@@ -9,6 +9,7 @@ from vietocr.tool.config import Cfg
 from vietocr.tool.predictor import Predictor
 from ocr_contracts.geometry import LINE_ORIENTATION_METHOD, VERTICAL_LINE_ORIENTATION_METHOD
 from ocr_recognition.primary_engine import BaseOCREngine
+from ocr_recognition.line_context import retry_line_context
 from ocr_runtime.paths import VIETOCR_FILES, registry_model_path, vietocr_model_dir, vietocr_registry_files
 from ocr_runtime.models import model_file_sha256
 from ocr_text.numeric_guard import preserves_numeric_evidence
@@ -50,6 +51,9 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             raise ValueError("line_upscale must be an integer from 1 to 4")
         # V8-050 candidate: cubic upscale of each line crop before VietOCR; 1 is off.
         self.line_upscale = line_upscale
+        # The transformer checkpoint is sensitive to glyphs touching crop edges.
+        # Retry weak readings only; confident crops retain their original view.
+        self.recognition_context = variant == "vgg_transformer"
         if horizontal_180_retry_threshold is not None and (
                 type(horizontal_180_retry_threshold) not in (int, float)
                 or not math.isfinite(horizontal_180_retry_threshold)
@@ -230,6 +234,13 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
             item["candidate_indices"] = list(range(len(pil_crops), len(pil_crops) + len(item["variants"])))
             pil_crops.extend(crop for _, crop in item["variants"])
         recognized_texts, recognized_probs = self._recognize_crops(pil_crops)
+        context_audits = {}
+        if getattr(self, "recognition_context", False):
+            pil_crops, recognized_texts, recognized_probs, context_audits = retry_line_context(
+                pil_crops, recognized_texts, recognized_probs, self._recognize_crops)
+            for item in boxes_and_crops:
+                item["variants"] = [(angle, pil_crops[index]) for (angle, _), index
+                                    in zip(item["variants"], item["candidate_indices"])]
         # Only uncertain horizontal crops receive an upside-down candidate.
         # Existing vertical handling already tests both 90/270 directions.
         threshold = getattr(self, "horizontal_180_retry_threshold", None)
@@ -284,6 +295,15 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
                                     "text_raw": recognized_texts[index], "confidence": probability_at(index)}
                                    for (angle, _), index in zip(item["variants"], indices)],
                 }
+            context_readings = [{"rotation_clockwise_degrees": angle, **context_audits[index]}
+                                for (angle, _), index in zip(item["variants"], indices)
+                                if index in context_audits]
+            if context_readings:
+                crop_provenance["context_retry"] = {
+                    "stage": "before_orientation", "readings": context_readings,
+                    "crop_bbox_pixels": list(item["crop_bbox_pixels"]),
+                    "bbox_space": "original_image_pixels",
+                }
             raw_text = recognized_texts[idx] if idx < len(recognized_texts) else ""
             nfc_text = unicodedata.normalize("NFC", raw_text)
             norm_text = nfc_text.strip()
@@ -334,9 +354,11 @@ class VietnameseSeq2SeqEngine(BaseOCREngine):
 
             probability = probability_at(idx)
             review_reasons = (["numeric_cleanup_rejected"] if numeric_cleanup_rejected else [])
+            if context_readings:
+                review_reasons.append("recognition_context_requires_review")
             if repetition_reason and not numeric_cleanup_rejected:
                 review_reasons.append(repetition_reason)
-            if crop_provenance:
+            if len(indices) > 1:
                 review_reasons.append("line_orientation_unverified" if crop_provenance["method"] == LINE_ORIENTATION_METHOD
                                       else "vertical_line_orientation_unverified")
 

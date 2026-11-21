@@ -36,6 +36,8 @@ OCR mới yêu cầu NVIDIA CUDA và xử lý đủ mọi trang. Thiếu GPU là
 
 Model/revision/hash được ghim tại [`models/v62/runtime-models.json`](models/v62/runtime-models.json). Bảng hình học có engine `deterministic_geometry`, confidence chưa hiệu chuẩn là `null` và vẫn cần review. Cấu trúc không đủ bằng chứng giữ fallback/review theo hợp đồng; không suy tọa độ token từ độ dài chữ hoặc tự sửa số tài chính.
 
+VietOCR Transformer đọc lại các dòng yếu với nhiều mức lề trắng để giảm lỗi tự thêm chữ ở crop sát nét. Dòng đã đọc tốt giữ nguyên; ứng viên phải đồng thuận, không thêm số mới và vẫn cần review. Bản đọc ban đầu được giữ trong provenance. Xem [bằng chứng chẩn đoán trên PDF VIB](benchmark/evidence/vib_context_retry_20261121.json); đây chưa phải nghiệm thu accuracy tổng thể.
+
 ## Cài đặt
 
 Python **3.11** cho supervisor và hai worker. Driver NVIDIA phải tương thích với các thư viện CUDA trong lock. Preflight kiểm môi trường thực trước OCR; smoke tổng hợp đã chạy trên RTX 2050 4 GiB, không phải cam kết mọi workload đều vừa VRAM đó.

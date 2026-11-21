@@ -1,0 +1,184 @@
+{
+  "schema_version": "vib-context-diagnostic-v1",
+  "date": "2026-11-21",
+  "timezone": "Asia/Bangkok",
+  "source_pdf": {
+    "name": "VIB_Baocaothuongnien_2024 (1)_removed.pdf",
+    "sha256": "1072848c7dfb1a3d5e54946ff1a3749eccfc774b4336f74f3444bfad4a47b280",
+    "pages": 2
+  },
+  "original_run": {
+    "repository": "VuTuanAn1403/OCR_pdf",
+    "commit": "842937872b865db2e4c991f2897364f340550585",
+    "output": "output/results (1)",
+    "receipt_files_verified": 16
+  },
+  "tested_code": {
+    "git_head": "842937872b865db2e4c991f2897364f340550585",
+    "working_tree_sha256": {
+      "src/ocr_recognition/vietnamese_seq2seq_engine.py": "403aa0361996f32e4d75acaf48e7d73853ec9245bad7571ca065a631f7b5a43a",
+      "src/ocr_recognition/line_context.py": "1f99cd1d8c4d29956fa2705b9153c08380da02375f01e42f2471eddd851c4812",
+      "tests/unit/recognition/test_line_context.py": "6ca2cbfd24e5d0109d92c033b5d131431bbcbbb7af7b9aa0f2f2a4d8f6f85f14"
+    },
+    "code_fingerprints": {
+      "extraction": "c308a32d378a5b28",
+      "analysis": "bd54151d5ee5bc7d",
+      "publication": "147ed7c15c13195a"
+    },
+    "file_hash_scope": "Byte file của checkout Windows đã kiểm; git_files giữ hash/blob canonical được công bố.",
+    "git_files": {
+      "src/ocr_recognition/vietnamese_seq2seq_engine.py": {
+        "blob": "9f6610cab2801ca456f32521aee9035bac5e552e",
+        "sha256": "21cfd9d00482187cee465d58087e4711120e0a7605d8b9a1d0b54dce53cbb2d2"
+      },
+      "src/ocr_recognition/line_context.py": {
+        "blob": "5cfbf87a8fff8137a282a431e06c62ac0b861d06",
+        "sha256": "1f99cd1d8c4d29956fa2705b9153c08380da02375f01e42f2471eddd851c4812"
+      },
+      "tests/unit/recognition/test_line_context.py": {
+        "blob": "456dd201dae118a6738af16f57028043ab4ad653",
+        "sha256": "6ca2cbfd24e5d0109d92c033b5d131431bbcbbb7af7b9aa0f2f2a4d8f6f85f14"
+      }
+    }
+  },
+  "cause": "VietOCR Transformer sinh thêm chữ ở crop sát nét; tái hiện trước Docling/Markdown bằng GPU cùng checkpoint. Batch 1/4 và beam search không giải quyết.",
+  "change": "Chỉ retry dòng yếu bằng lề trắng không lấy pixel lân cận. Cần context khác pixel đồng thuận token có dấu/định dạng số, reading ngắn hơn và probability tăng đủ. Không thêm số mới/thay giá trị; ưu tiên giữ từ ban đầu. Giữ mọi raw reading, bbox và yêu cầu review nếu dùng retry.",
+  "gpu_run": {
+    "output": "output\\vib_context_20261121_003",
+    "pages_processed": 2,
+    "source_fingerprint": "ebdc4b05481a3c33",
+    "models_fingerprint": "f5605b8aa481d6ca",
+    "device": "cuda",
+    "assets": "none",
+    "scheduler_status": "COMPLETED",
+    "phase_trees_exited": {
+      "text": true,
+      "structure": true,
+      "export": true
+    },
+    "validation": "NEEDS_REVIEW",
+    "validation_errors": 0,
+    "validation_warnings": 11,
+    "completion_valid": true,
+    "local_artifacts_sha256": {
+      "ocr_receipt.json": "a816e4a3d5dacbb0bd81e76924f8913e20e7ade81befb4f648b5b41b004e1ba7",
+      "manifest.json": "7053535dac161839a6782ce5884f0ba98a386afcfd2dfc3e86468d506f993623",
+      "gpu_scheduler.json": "a03b930306a0168fd492c2de2da714f35f8845ab2c95a7ed536ef954a79c0aba",
+      "validation.json": "9d144fb0ba236ba4bf20e4efe7d22c6c11c99118aae6504b53c086e533cee843",
+      "result.md": "ceb0f1923ef586e56848149b78bbb98d9ca46d9ff0997a5bf472867b8b9e019f",
+      "result.txt": "33ecc067fb3d9064645af87077ac007134a6d73bdcaa4485529fcb6c50c0c0a5"
+    }
+  },
+  "diagnostic_comparison": {
+    "diagnostic_lines": 7,
+    "diagnostic_lines_tokens_match": 7,
+    "confident_controls": 57,
+    "confident_controls_unchanged": 57,
+    "changed_lines": 13
+  },
+  "checks": {
+    "targeted": {
+      "git_head": "842937872b865db2e4c991f2897364f340550585",
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit/recognition",
+        "tests/unit/test_v6_local_profile.py",
+        "tests/unit/test_import_contracts.py",
+        "-q",
+        "--capture=fd",
+        "--tb=short",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-104842-02ac3d32\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-104842-02ac3d32\\evidence\\junit.xml"
+      ],
+      "counts": {
+        "tests": 121,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 121
+      },
+      "seconds": 14.514,
+      "exit_code": 0,
+      "local_evidence": "scratch/runs/20261121-104842-02ac3d32",
+      "evidence_sha256": {
+        "run.json": "a9dc861d1fdb62ce764b476f0f4bf318603b5ab587868eb3d32e367fdc43dcf2",
+        "logs/pytest.log": "44666e6e344c3f1f2fda0d8978228a9068bb5fe1e67c5ce047b501ae05a865ec",
+        "evidence/junit.xml": "d9e548616f1654e68710f4c8596c067762a5d7fb51317d9a9c7186b55d44b336"
+      }
+    },
+    "full_regression": {
+      "git_head": "842937872b865db2e4c991f2897364f340550585",
+      "command": [
+        "C:\\kk_2\\OCR_pdf\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/unit",
+        "tests/scientific",
+        "tests/legacy_compat",
+        "-q",
+        "--capture=fd",
+        "--tb=short",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-104943-a427096e\\pytest",
+        "--junitxml=C:\\kk_2\\OCR_pdf\\scratch\\runs\\20261121-104943-a427096e\\evidence\\junit.xml"
+      ],
+      "counts": {
+        "tests": 2793,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 2792
+      },
+      "seconds": 493.009,
+      "exit_code": 0,
+      "local_evidence": "scratch/runs/20261121-104943-a427096e",
+      "evidence_sha256": {
+        "run.json": "bb8142ab954fa334a08dba9308247228dd825a8bf6bb96bddee0c10f9521e0cc",
+        "logs/pytest.log": "abe70384c4204531989adc31e4d1ca8ef82f63fb2a45103ea5ff4ae887b610c7",
+        "evidence/junit.xml": "6da5533acd2f390e47bc88f27f5dac31bbea445a276c64883c37c608835a9e5d"
+      }
+    }
+  },
+  "full_regression_pending": false,
+  "historical_trials": [
+    {
+      "output": "output/vib_context_20261121_001",
+      "selected": false,
+      "note": "Thêm lề toàn cục gây lỗi mới trên dòng tốt; loại phương án này."
+    },
+    {
+      "output": "output/vib_context_20261121_002",
+      "selected": false,
+      "note": "Đã giữ 57 control nhưng 1/7 dòng còn sai dấu do ưu tiên nhóm lớn; thay bằng ưu tiên giữ từ gốc."
+    },
+    {
+      "tests": "scratch/runs/20261121-104258-86192569",
+      "outcome": "INTERRUPTED_NOT_PASS"
+    }
+  ],
+  "local_evidence_sha256": {
+    "comparison-003.json": "fbd5229e4da0ff1e930b28ae9660f11bd3befc8e203cba11ed597d3d1540daae",
+    "diagnostic_expected.json": "ef4d8d1c1d3ff5fe9e21f0fb0d85b2951f67cb05bbb384092998963f2f52b123",
+    "final_output_003_audit.json": "56d3baceffad5af7fc8e01c85dd5fa6c477775f30b8fde1374d9774de4b836d0",
+    "final_process_audit.json": "da7ddc9c07aed5972532246e251d3fa1fb35124cb5af7e0d87d56899fc2783d3"
+  },
+  "scope": {
+    "accuracy": "NOT_EVALUATED",
+    "gt": "7 dòng được xem ảnh và chọn để phát triển, không phải holdout độc lập.",
+    "limits": "57 controls so raw text trong cùng trang, 3 vị trí lệch làm tròn bbox nhưng raw text giữ nguyên. Không chấm CER/TEDS toàn PDF hoặc cổng dấu. Dấu mép trang/nội dung không chắc và các khác biệt số giữa inference vẫn cần review.",
+    "artifact_availability": "PDF, log, output và GT chi tiết chỉ lưu cục bộ; công khai lệnh, số đo chẩn đoán, identity và hash.",
+    "kaggle_with_this_fix": "NOT_EVALUATED; identity trên Linux phải được tính lại tại runtime."
+  },
+  "runtime": {
+    "diagnostic_gpu": "NVIDIA GeForce RTX 2050",
+    "text_worker_torch": "2.12.1+cu126",
+    "platform": "Windows; supervisor Python 3.11, isolated text/Docling workers"
+  }
+}
