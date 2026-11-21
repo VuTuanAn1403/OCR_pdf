@@ -2,9 +2,9 @@
   "schema_version": "ocr-v8-knowledge-map-v1",
   "program_label": "OCR PDF v8.0",
   "pipeline_version": "8.0.0",
-  "verified_head": "b575c4273b97e7b425ca8a5ed0077c980f489d1a",
+  "verified_head": "16926e459481d1eae491028f65f988fd85569d23",
   "last_verified": "2026-11-21",
-  "verified_scope": "21/11 mã b575c42: README v8, bảng đã tách module/rules chung; hợp nhất OCR_pdf/main@37ca301, giữ cải tiến reading-order/Markdown. Extraction 979becd0fef174a1; 2778 passed/1 skipped. Bằng chứng: benchmark/evidence/v8_publication_20261121.json. Smoke GPU 54fd0627ade536e2 và khóa 20261119-002 là lịch sử; không sửa output/lock cũ, chưa nghiệm thu accuracy mới. V8 vẫn 38 DONE/11 pha DONE.",
+  "verified_scope": "21/11 mã 16926e4: retry lề trắng có đồng thuận cho crop Transformer yếu, giữ raw/nguồn/số và dòng tốt; extraction c308a32d378a5b28. 2792 passed/1 skipped; GPU Windows đủ 2 trang VIB: 7/7 dòng chẩn đoán khớp token, 57/57 control giữ raw, audit không lỗi nhưng NEEDS_REVIEW. benchmark/evidence/vib_context_retry_20261121.json. Chưa nghiệm thu accuracy/GT độc lập hoặc chạy lại Kaggle; smoke/khóa cũ là lịch sử. V8 giữ 38 DONE/11 pha DONE.",
   "sources": [
     {
       "path": "cai tien v2/So_sanh_cong_nghe_OCR_pdf.docx",
@@ -132,9 +132,18 @@
           "path": "src/ocr_document/source_identity.py",
           "symbol": "lock_rejected_ocr_lines",
           "label": "VERIFIED"
+        },
+        {
+          "path": "src/ocr_recognition/line_context.py",
+          "symbol": "retry_line_context",
+          "label": "VERIFIED"
+        },
+        {
+          "path": "benchmark/evidence/vib_context_retry_20261121.json",
+          "label": "VERIFIED"
         }
       ],
-      "note": "Q17 A PROMOTE vgg_transformer vào 8.0.0; holdout DSER 3.183->969 (CER 18.956->10.229); audit 17 absent/207 missing xong 19/11."
+      "note": "Q17 A PROMOTE vgg_transformer vào 8.0.0; holdout DSER 3.183->969 (CER 18.956->10.229); audit 17 absent/207 missing xong 19/11. 21/11 sửa crop VIB bằng retry đồng thuận, chỉ là chẩn đoán phát triển, quality giữ NOT_EVALUATED."
     },
     {
       "id": "L4",

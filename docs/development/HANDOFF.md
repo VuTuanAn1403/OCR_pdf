@@ -1,6 +1,6 @@
 # Bàn giao
 
-21/11/2026, Asia/Bangkok. Nhánh xuất bản `codex/publish-v8-20261120`, mốc mã **`b575c42`**, đích [OCR_pdf/main](https://github.com/VuTuanAn1403/OCR_pdf). Đã hợp nhất lịch sử `37ca301` và giữ cải tiến reading-order/Markdown. `PIPELINE_VERSION = "8.0.0"`. Khóa lịch sử `BASELINE-V8-20261119-002` (`7745704`, `LOCKED`, 37 model) không nhận dạng extraction mới. [Kết quả công khai](../../benchmark/evidence/v8_publication_20261121.json); log/receipt `scratch/`, `output/` chỉ có cục bộ.
+21/11/2026, Asia/Bangkok. Nhánh xuất bản `codex/publish-v8-20261120`, mốc mã **`16926e4`**, đích [OCR_pdf/main](https://github.com/VuTuanAn1403/OCR_pdf). Đã hợp nhất lịch sử `37ca301` và giữ cải tiến reading-order/Markdown. `PIPELINE_VERSION = "8.0.0"`. Khóa lịch sử `BASELINE-V8-20261119-002` (`7745704`, `LOCKED`, 37 model) không nhận dạng extraction mới. [Kết quả công khai](../../benchmark/evidence/v8_publication_20261121.json); log/receipt `scratch/`, `output/` chỉ có cục bộ.
 
 ## Quyết định đã chốt (`Q15–Q19`, 19/11/2026)
 
@@ -16,6 +16,8 @@
 - GT lịch sử: 1.255 ô số/43 bảng/23 trang, reading order AAA 4 trang, keyword dev 718 trang. Xem [hồ sơ lựa chọn](../../cai%20tien%20v2/bao_cao/CANDIDATE_SELECTION_DOSSIER.md), [khóa baseline](../../cai%20tien%20v2/bao_cao/BASELINE_LOCK_REPORT.md), [nhật ký 18–19/11](../../scratch/dev_sessions/20261118-gt-holdout-scoring/session.md). Không dùng số này nghiệm thu identity mới.
 
 ## Thay đổi và bằng chứng mới
+
+- **Sửa thêm chữ VIB 21/11:** crop sát nét khiến Transformer sinh thêm chữ trước export. Retry lề trắng có đồng thuận, ưu tiên giữ từ gốc; dòng tốt giữ nguyên, raw/bbox và các ứng viên được lưu để review. GPU đủ 2 trang tại `output/vib_context_20261121_003`: 7/7 dòng chẩn đoán khớp token, 57/57 controls giữ raw, 13 dòng thay đổi; audit không lỗi, vẫn NEEDS_REVIEW. 2.792 passed/1 skipped; extraction `c308a32d378a5b28`; lệnh và giới hạn tại [báo cáo](../../benchmark/evidence/vib_context_retry_20261121.json), [phiên](../../scratch/dev_sessions/20261121-vib-extra-text/session.md). Không chọn lượt thử 001/002, không sửa output/model/lock cũ.
 
 - **Xuất bản 21/11:** [README v8](../../README.md) cập nhật cài đặt, hai pha GPU, CPU analysis, keyword, module bảng, Kaggle và giới hạn. Notebook trỏ `OCR_pdf.git`. Hồi quy mã hợp nhất **2778 passed, 1 skipped**, extraction `979becd0fef174a1`; 82 test sát merge và 37 test exporter/reading-order đạt. Sửa mẫu test exporter cũ bằng hai thứ tự kỳ vọng cụ thể. [Phiên/lệnh/receipt đẩy Git](../../scratch/dev_sessions/20261120-readme-publish/session.md).
 - **Tách module bảng 20/11:** API tài chính `701→17` dòng; layout `1.025→176`; phần triển khai trong `financial_tables/`, `table_layout/`, tối đa 279 dòng/file. 28 replay/7 trang khớp trước-sau và 2.776 passed/1 skipped ở identity `6b3f843e93d762ae`. [Nhật ký](../../scratch/dev_sessions/20261120-table-modularization/session.md).
